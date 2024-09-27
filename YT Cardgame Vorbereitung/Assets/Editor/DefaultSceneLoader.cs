@@ -10,6 +10,7 @@ public static class DefaultSceneLoader
     {
         var pathOfFirstScene = EditorBuildSettings.scenes[0].path;
         var sceneAsset = AssetDatabase.LoadAssetAtPath<SceneAsset>(pathOfFirstScene);
+        Debug.Log(sceneAsset);
         EditorSceneManager.playModeStartScene = sceneAsset;
         Debug.Log(pathOfFirstScene + " was set as default play mode scene");
     }
