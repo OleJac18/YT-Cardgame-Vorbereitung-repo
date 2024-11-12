@@ -1,20 +1,23 @@
+using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 using static UnityEngine.GraphicsBuffer;
 
-public class CardManager : NetworkBehaviour
+public class CardManager : MonoBehaviour
 {
     [Header("UI Elements")]
     [SerializeField] private GameObject _cardPrefab;
     [SerializeField] private GameObject _spawnCardDeckPos;
     [SerializeField] private GameObject _spawnCardPlayerPos;
     [SerializeField] private GameObject _spawnCardEnemyPos;
-    [SerializeField] private GameObject _playerDrawnCardPos;
-    [SerializeField] private GameObject _enemyDrawnCardPos;
+    [SerializeField] private GameObject _showDrawnCardPos;
 
     [Header("Interne Variablen")]
-    [SerializeField] private int _topCardNumber = -1;
     [SerializeField] private GameObject _cardDeckCard;
+
+
+    public int topCardNumber = -1;
 
     [SerializeField] private CardStack _cardStack;
 
@@ -27,42 +30,55 @@ public class CardManager : NetworkBehaviour
             _cardStack.CreateDeck();
             _cardStack.ShuffleCards();
         };
-
-
-        CardDeckUI.OnCardDeckClicked += HandleCardDeckClicked;
     }
 
-    public override void OnDestroy()
-    {
-        base.OnDestroy();
-        CardDeckUI.OnCardDeckClicked -= HandleCardDeckClicked;
-    }
-
-    private void HandleCardDeckClicked()
-    {
-        GetTopCardDeckCardServerRpc(NetworkManager.LocalClientId);
-    }
-
-    private void SpawnAndMoveCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
+    public void SpawnAndMoveCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
     {
         // Spawned eine neue Karte vom Kartenstapel
         _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent,
                                     Card.Stack.CARDDECK, true, false, false);
 
+        if (flipAtDestination)
+        {
+            // Schritt 1: Karte anheben, leicht vergrößern und umdrehen
+            FlipAndMoveCard(target);
+        }
+        else
+        {
+            MoveToDrawnPosition(target);
+        }
+    }
+
+    private void FlipAndMoveCard(Transform target)
+    {
+        CardController controller = _cardDeckCard.GetComponent<CardController>();
+
+        LeanTween.move(_cardDeckCard, _showDrawnCardPos.transform, 0.5f);
+        LeanTween.scale(_cardDeckCard, Vector3.one * 1.2f, 0.5f).setEase(LeanTweenType.easeOutQuad);
+
+        LeanTween.rotateX(_cardDeckCard, 90.0f, 0.25f).setOnComplete(() =>
+        {
+            controller.cardBackImage.SetActive(!controller.cardBackImage.activeSelf);
+            LeanTween.rotateX(_cardDeckCard, 0.0f, 0.25f).setOnComplete(() =>
+            {
+                LeanTween.delayedCall(0.5f, () =>
+                {
+                    MoveToDrawnPosition(target);
+                });
+            });
+        });
+    }
+
+    private void MoveToDrawnPosition(Transform target)
+    {
+        // Schritt 2: Karte zum Ziel bewegen und zurück auf Originalgröße skalieren
         Vector3 targetPos = GetCenteredPosition(target);
 
-        // Bewegt die gespawnte Karte vom Kartenstapel zum Spieler, der diese gezogen hat
-        LeanTween.move(_cardDeckCard, targetPos, 0.5f).setOnComplete(() =>
+        LeanTween.move(_cardDeckCard, targetPos, 0.5f).setEase(LeanTweenType.easeInOutQuad);
+        LeanTween.scale(_cardDeckCard, Vector3.one, 0.5f).setEase(LeanTweenType.easeInOutQuad).setOnComplete(() =>
         {
-            if (flipAtDestination)
-            {
-                CardController controller = _cardDeckCard.GetComponent<CardController>();
-                controller.FlipCardAnimation();
-            }
-
             _cardDeckCard.transform.SetParent(target);
-
-        });
+        }); ;
     }
 
     /// <summary>
@@ -74,6 +90,17 @@ public class CardManager : NetworkBehaviour
     /// Konvertiere in Weltkoordinaten:
     /// Die Methode TransformPoint(centerOffset) wendet die berechnete Verschiebung auf die Weltposition des RectTransform an, 
     /// sodass targetPos das Ziel anzeigt, als wäre der Pivot in der Mitte.
+    /// 
+    /// Der Ausdruck 0.5f - target.pivot.y funktioniert wie folgt:
+    /// Wenn target.pivot.y bei 0.5 liegt (Mitte): 0.5f - 0.5f = 0. Kein Offset ist nötig, weil der Pivot bereits in der Mitte liegt.
+    /// Wenn target.pivot.y bei 0 liegt (unten): 0.5f - 0 = 0.5. Der Offset verschiebt die Position nach oben, um den unteren Pivot so anzupassen, dass es aussieht, als wäre er in der Mitte.
+    /// Wenn target.pivot.y bei 1 liegt (oben): 0.5f - 1 = -0.5. Der Offset verschiebt die Position nach unten, um die obere Kante so anzupassen, dass es aussieht, als wäre der Pivot in der Mitte.
+    /// Warum der Offset notwendig ist
+    /// 
+    /// Wenn wir die Höhe des RectTransform berücksichtigen, indem wir sie mit diesem Offset multiplizieren (height* (0.5f - target.pivot.y)), erhalten wir den notwendigen Abstand in lokalen 
+    /// Koordinaten:
+    /// Ein Wert von +0.5 * height verschiebt das Objekt um die halbe Höhe nach oben.
+    /// Ein Wert von -0.5 * height verschiebt es um die halbe Höhe nach unten.
     /// </summary>
     /// <param name="target"></param>
     /// <returns></returns>
@@ -112,13 +139,20 @@ public class CardManager : NetworkBehaviour
         return _cardStack.DrawTopCard();
     }
 
+
     public void ServFirstCards(int[] playerCards)
+    {
+        StartCoroutine(ServFirstCardsCoroutine(playerCards));
+    }
+
+    IEnumerator ServFirstCardsCoroutine(int[] playerCards)
     {
         for (int i = 0; i < 4; i++)
         {
+            yield return new WaitForSeconds(0.5f);
             // Spawned die Spielerkarten
             SpawnCard(playerCards[i], _spawnCardPlayerPos, _spawnCardPlayerPos.transform,
-                        Card.Stack.PLAYERCARD, false, true, true);
+                        Card.Stack.PLAYERCARD, true, true, true);
 
             // Spawned die Gegnerkarten
             SpawnCard(99, _spawnCardEnemyPos, _spawnCardEnemyPos.transform,
@@ -126,57 +160,34 @@ public class CardManager : NetworkBehaviour
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    /// <summary>
+    /// Updated den Hoverzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
+    /// </summary>
+    /// <param name="scaleby"></param>
+    /// <param name="index"></param>
+    public void SetEnemyCardHoverEffect(Vector3 scaleby, int index)
+    {
+        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
+        card.transform.localScale = scaleby;
+    }
 
     /// <summary>
-    /// Holt sich die oberste Karte vom CardDeck. Da aber nur der Server das Kartendeck hat, muss ein Rpc Call
-    /// zum Server gemacht werden. Danach wird die oberste Karte vom CardDeck bei dem spezifischen Client
-    /// gespawnt, bei dem auf das CardDeck geklickt wurde.
+    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
     /// </summary>
-    /// <param name="clientId"></param>
-    [Rpc(SendTo.Server)]
-    public void GetTopCardDeckCardServerRpc(ulong clientId)
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
+    public void SetEnemyCardClick(bool isSelected, int index)
     {
-        _topCardNumber = _cardStack.DrawTopCard();
+        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
 
-        if (_topCardNumber != 100)
+        Outline outline = card.GetComponent<Outline>();
+
+        if (outline == null)
         {
-            SpawnCardDeckCardSpecificClientRpc(_topCardNumber, RpcTarget.Single(clientId, RpcTargetUse.Temp));
+            Debug.Log("Das Object " + name + " hat keine Komponente Outline");
+            return;
         }
-        else
-        {
-            Debug.Log("Kartenstapel ist leer.");
-        }
+
+        outline.enabled = isSelected;
     }
-
-    /// <summary>
-    /// Spawned die oberste Karte vom CardDeck bei dem spezifischen Client  bei dem auf das CardDeck geklickt wurde
-    /// Im Anschluss wird bei allen anderen Clients auch die oberste Karte gespawnt aber mit einer -1 als Kartennummer
-    /// </summary>
-    /// <param name="cardNumber"></param>
-    /// <param name="rpcParams"></param>
-    [Rpc(SendTo.SpecifiedInParams)]
-    public void SpawnCardDeckCardSpecificClientRpc(int cardNumber, RpcParams rpcParams = default)
-    {
-        Debug.Log("topCardNumber from ClientRpc Call: " + cardNumber);
-
-        // Spawned eine Karte beim Spieler, der auf den Kartenstapel gedrückt hat
-        SpawnAndMoveCardToDrawnCardPos(cardNumber, _playerDrawnCardPos.transform, true);
-
-        // Spawned bei allen anderen Clients eine Karte vom Kartendeck
-        SpawnCardDeckCardClientRpc();
-    }
-
-    /// <summary>
-    /// Spawned eine CardDeck Karte bei allen Clients/Server, die nicht auf die CardDeck Karte geklickt haben
-    /// </summary>
-    [Rpc(SendTo.NotMe)]
-    public void SpawnCardDeckCardClientRpc()
-    {
-        Debug.Log("Client Spawned a CardDeck Card!");
-
-        SpawnAndMoveCardToDrawnCardPos(99, _enemyDrawnCardPos.transform, false);
-    }
-
 }

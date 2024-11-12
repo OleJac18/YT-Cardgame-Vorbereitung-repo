@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,8 +8,12 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 {
     [SerializeField] private TextMeshProUGUI numberTextTopLeft;
     [SerializeField] private TextMeshProUGUI numberTextBottomRight;
-    [SerializeField] private GameObject cardBackImage;
+    [SerializeField] public GameObject cardBackImage;
     [SerializeField] private Card _card;
+
+    public static event Action<Vector3, int> OnCardHovered; // Event für Hover-Aktionen
+    public static event Action<bool, int> OnCardClicked;       // Event für Klick-Aktionen
+
 
     public bool canHover = false;
     public bool isSelectable = false;
@@ -23,6 +28,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _originalScale = Vector3.one;
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
         _card = new Card(13, Card.Stack.NONE);
+    }
+
+    private void OnEnable()
+    {
+        GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
     }
 
     public int CardNumber
@@ -61,6 +76,10 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         if (!canHover) return;
 
         this.transform.localScale = _hoverScale;
+
+        int index = this.transform.GetSiblingIndex();
+        // Event für Hover starten und SiblingIndex als Identifikator weitergeben
+        OnCardHovered?.Invoke(_hoverScale, index);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -69,6 +88,10 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         if (!canHover) return;
 
         this.transform.localScale = _originalScale;
+
+        int index = this.transform.GetSiblingIndex();
+        // Event für Hover starten und SiblingIndex als Identifikator weitergeben
+        OnCardHovered?.Invoke(_originalScale, index);
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -77,7 +100,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         if (!isSelectable) return;
 
         //SelectionAnimation();
-        FlipCardAnimation();
+
+        FlipCardAnimation(!cardBackImage.activeSelf);
     }
 
     private void SelectionAnimation()
@@ -89,14 +113,27 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
 
         _outline.enabled = !_outline.enabled;
+
+        int index = this.transform.GetSiblingIndex();
+        // Event für Selektieren starten und SiblingIndex als Identifikator weitergeben
+        OnCardClicked?.Invoke(_outline.enabled, index);
     }
 
-    public void FlipCardAnimation()
+    private void FlipCardAnimation(bool showCardBack)
     {
         LeanTween.rotateY(this.gameObject, 90.0f, 0.25f).setOnComplete(() =>
         {
-            cardBackImage.SetActive(!cardBackImage.activeSelf);
+            cardBackImage.SetActive(showCardBack);
             LeanTween.rotateY(this.gameObject, 0.0f, 0.25f);
         });
+    }
+
+    // Methode, die das Event am Spielende verarbeitet
+    public void FlipCardIfNotFlippedAtGameEnd()
+    {
+        if (cardBackImage.activeSelf) // Nur umdrehen, wenn Rückseite sichtbar
+        {
+            FlipCardAnimation(false); // Hier den Parameter für "showCardBack" auf "false" setzen
+        }
     }
 }
