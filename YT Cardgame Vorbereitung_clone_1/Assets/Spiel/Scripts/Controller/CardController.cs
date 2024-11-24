@@ -8,12 +8,12 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 {
     [SerializeField] private TextMeshProUGUI numberTextTopLeft;
     [SerializeField] private TextMeshProUGUI numberTextBottomRight;
-    [SerializeField] public GameObject cardBackImage;
+    [SerializeField] private GameObject cardBackImage;
     [SerializeField] private Card _card;
 
     public static event Action<Vector3, int> OnCardHovered; // Event für Hover-Aktionen
-    public static event Action<bool, int> OnCardClicked;       // Event für Klick-Aktionen
-
+    public static event Action<bool, int> OnCardClicked;    // Event für Klick-Aktionen
+    public static event Action OnGraveyardCardClicked;
 
     public bool canHover = false;
     public bool isSelectable = false;
@@ -33,11 +33,13 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void OnEnable()
     {
         GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
+        NetworkCardManager.UpdateInteractionStateEvent += SetInteractivity;
     }
 
     private void OnDisable()
     {
         GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
+        NetworkCardManager.UpdateInteractionStateEvent -= SetInteractivity;
     }
 
     public int CardNumber
@@ -68,6 +70,17 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void SetCardBackImageVisibility(bool visible)
     {
         cardBackImage.SetActive(visible);
+    }
+
+    public void SetInteractivity(bool isActive)
+    {
+        if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
+
+        canHover = isActive;
+        isSelectable = isActive;
+
+        // Optionale visuelle Indikatoren
+        Debug.Log($"Interaktivität der Karte '{name}' auf {isActive} gesetzt.");
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -101,7 +114,14 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         //SelectionAnimation();
 
-        FlipCardAnimation(!cardBackImage.activeSelf);
+        if (_card.correspondingDeck == Card.Stack.GRAVEYARD)
+        {
+            OnGraveyardCardClicked?.Invoke();
+        }
+        else
+        {
+            FlipCardAnimation(!cardBackImage.activeSelf);
+        }
     }
 
     private void SelectionAnimation()
@@ -119,7 +139,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         OnCardClicked?.Invoke(_outline.enabled, index);
     }
 
-    private void FlipCardAnimation(bool showCardBack)
+    public void FlipCardAnimation(bool showCardBack)
     {
         LeanTween.rotateY(this.gameObject, 90.0f, 0.25f).setOnComplete(() =>
         {

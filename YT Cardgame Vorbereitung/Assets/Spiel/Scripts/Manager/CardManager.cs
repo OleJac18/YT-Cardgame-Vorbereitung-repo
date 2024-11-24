@@ -12,10 +12,12 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _spawnCardPlayerPos;
     [SerializeField] private GameObject _spawnCardEnemyPos;
     [SerializeField] private GameObject _showDrawnCardPos;
+    [SerializeField] private GameObject _graveyardPos;
+    [SerializeField] private GameObject _playerDrawnCardPos;
 
     [Header("Interne Variablen")]
     [SerializeField] private GameObject _cardDeckCard;
-
+    [SerializeField] private GameObject _graveyardCard;
 
     public int topCardNumber = -1;
 
@@ -30,6 +32,13 @@ public class CardManager : MonoBehaviour
             _cardStack.CreateDeck();
             _cardStack.ShuffleCards();
         };
+
+        CardController.OnGraveyardCardClicked += MoveGraveyardCardToPlayerPos;
+    }
+
+    private void OnDestroy()
+    {
+        CardController.OnGraveyardCardClicked -= MoveGraveyardCardToPlayerPos;
     }
 
     public void SpawnAndMoveCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
@@ -41,44 +50,44 @@ public class CardManager : MonoBehaviour
         if (flipAtDestination)
         {
             // Schritt 1: Karte anheben, leicht vergrößern und umdrehen
-            FlipAndMoveCard(target);
+            FlipAndMoveCard(_cardDeckCard, target);
         }
         else
         {
-            MoveToDrawnPosition(target);
+            MoveToTargetPosition(_cardDeckCard, target);
         }
     }
 
-    private void FlipAndMoveCard(Transform target)
+    private void FlipAndMoveCard(GameObject objectToMove, Transform target)
     {
-        CardController controller = _cardDeckCard.GetComponent<CardController>();
+        CardController controller = objectToMove.GetComponent<CardController>();
 
-        LeanTween.move(_cardDeckCard, _showDrawnCardPos.transform, 0.5f);
-        LeanTween.scale(_cardDeckCard, Vector3.one * 1.2f, 0.5f).setEase(LeanTweenType.easeOutQuad);
+        LeanTween.move(objectToMove, _showDrawnCardPos.transform, 0.5f);
+        LeanTween.scale(objectToMove, Vector3.one * 1.2f, 0.5f).setEase(LeanTweenType.easeOutQuad);
 
-        LeanTween.rotateX(_cardDeckCard, 90.0f, 0.25f).setOnComplete(() =>
+        LeanTween.rotateX(objectToMove, 90.0f, 0.25f).setOnComplete(() =>
         {
-            controller.cardBackImage.SetActive(!controller.cardBackImage.activeSelf);
-            LeanTween.rotateX(_cardDeckCard, 0.0f, 0.25f).setOnComplete(() =>
+            controller.SetCardBackImageVisibility(false);
+            LeanTween.rotateX(objectToMove, 0.0f, 0.25f).setOnComplete(() =>
             {
                 LeanTween.delayedCall(0.5f, () =>
                 {
-                    MoveToDrawnPosition(target);
+                    MoveToTargetPosition(objectToMove, target);
                 });
             });
         });
     }
 
-    private void MoveToDrawnPosition(Transform target)
+    private void MoveToTargetPosition(GameObject objectToMove, Transform target)
     {
         // Schritt 2: Karte zum Ziel bewegen und zurück auf Originalgröße skalieren
         Vector3 targetPos = GetCenteredPosition(target);
 
-        LeanTween.move(_cardDeckCard, targetPos, 0.5f).setEase(LeanTweenType.easeInOutQuad);
-        LeanTween.scale(_cardDeckCard, Vector3.one, 0.5f).setEase(LeanTweenType.easeInOutQuad).setOnComplete(() =>
+        LeanTween.move(objectToMove, targetPos, 0.5f).setEase(LeanTweenType.easeInOutQuad);
+        LeanTween.scale(objectToMove, Vector3.one, 0.5f).setEase(LeanTweenType.easeInOutQuad).setOnComplete(() =>
         {
-            _cardDeckCard.transform.SetParent(target);
-        }); ;
+            objectToMove.transform.SetParent(target);
+        });
     }
 
     /// <summary>
@@ -189,5 +198,48 @@ public class CardManager : MonoBehaviour
         }
 
         outline.enabled = isSelected;
+    }
+
+    public void SpawnAndMoveGraveyardCard(int cardNumber, bool isSelectable)
+    {
+        Debug.Log("Ich will eine Graveyard Karte spawnen");
+
+        // Spawned eine neue Karte vom Kartenstapel für das Graveyard
+        _graveyardCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent,
+                                    Card.Stack.GRAVEYARD, true, false, isSelectable);
+
+        // Setzt den Parent zuerst vom Table, damit die Karte über dem Kartenstapel ist
+        _graveyardCard.transform.SetParent(_graveyardPos.transform.parent);
+
+        CardController controller = _graveyardCard.GetComponent<CardController>();
+
+        Vector3 target = GetCenteredPosition(_graveyardPos.transform);
+
+        // Bewegen der Karte vom Kartenstapel zum Graveyard
+        LeanTween.move(_graveyardCard, target, 0.5f).setOnComplete(() =>
+        {
+            _graveyardCard.transform.SetParent(_graveyardPos.transform);
+            controller.FlipCardAnimation(false);
+        });
+    }
+
+    /// <summary>
+    /// Bewegt die Graveyardkarte zum Spieler, der auch auf die Karte gedrückt hat
+    /// </summary>
+    private void MoveGraveyardCardToPlayerPos()
+    {
+        MoveGraveyardCardToDrawnPos(_playerDrawnCardPos.transform);
+    }
+
+    /// <summary>
+    /// Allgemeine Funktion zum Bewegen der Graveyardkarte zu einer bestimmten Position
+    /// </summary>
+    /// <param name="target"></param>
+    public void MoveGraveyardCardToDrawnPos(Transform target)
+    {
+        MoveToTargetPosition(_graveyardCard, target);
+
+        CardController controller = _graveyardCard.GetComponent<CardController>();
+        controller.isSelectable = false;
     }
 }

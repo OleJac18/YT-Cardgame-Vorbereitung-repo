@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -8,45 +9,47 @@ public class NetworkCardManager : NetworkBehaviour
     [SerializeField] private GameObject _playerDrawnCardPos;
     [SerializeField] private GameObject _enemyDrawnCardPos;
 
-    private PlayerManager _playerManager;
     private CardManager _cardManager;
+
+    public static event Action<bool> UpdateInteractionStateEvent;
 
     private void Start()
     {
         // Suche zur Laufzeit nach den Instanzen
-        _playerManager = FindObjectOfType<PlayerManager>();
         _cardManager = FindObjectOfType<CardManager>();
 
-        ConnectionManager.ClientConnectedEvent += CheckAllClientsConnected;
         CardDeckUI.OnCardDeckClicked += HandleCardDeckClicked;
         CardController.OnCardHovered += SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClicked += SetEnemyCardClickClientRpc;
+        CardController.OnGraveyardCardClicked += MoveGraveyardCardToEnemyDrawnPosClientRpc;
+        GameManager.StartGameEvent += ServFirstCards;
+        GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
     }
 
     public override void OnDestroy()
     {
         base.OnDestroy();
-        ConnectionManager.ClientConnectedEvent -= CheckAllClientsConnected;
+
         CardDeckUI.OnCardDeckClicked -= HandleCardDeckClicked;
         CardController.OnCardHovered -= SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClicked -= SetEnemyCardClickClientRpc;
+        CardController.OnGraveyardCardClicked -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
+        GameManager.StartGameEvent -= ServFirstCards;
+        GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
     }
 
     private void HandleCardDeckClicked()
     {
-        DrawAndSpawnTopCardServerRpc(NetworkManager.LocalClientId);
+        DrawAndSpawnTopCardServerRpc(NetworkManager.Singleton.LocalClientId);
     }
 
-
-    private void CheckAllClientsConnected(ulong clientId)
+    private void ServFirstCards(List<ulong> clientIds, ulong currentPlayerId)
     {
-        if (NetworkManager.Singleton.IsServer)
-        {
-            List<ulong> clientIds = _playerManager.GetConnectedClientIds();
-            if (clientIds.Count < 2) return;
+        DistributeCardsToPlayers(clientIds);
 
-            DistributeCardsToPlayers(clientIds);
-        }
+        int drawnCard = _cardManager.DrawTopCard();
+        Debug.Log("Ich habe die Karte " + drawnCard + " f¸r das Graveyard gezogen.");
+        SpawnGraveyardCardClientAndHostRpc(drawnCard, currentPlayerId);
     }
 
     private void DistributeCardsToPlayers(List<ulong> clientIds)
@@ -163,5 +166,43 @@ public class NetworkCardManager : NetworkBehaviour
         if (IsServer && !IsHost) return;
 
         _cardManager.SetEnemyCardClick(isSelected, index);
+    }
+
+    /// <summary>
+    /// Spawned eine Graveyardkarte bei jedem Client
+    /// </summary>
+    /// <param name="cardNumber"></param>
+    [Rpc(SendTo.ClientsAndHost)]
+    private void SpawnGraveyardCardClientAndHostRpc(int cardNumber, ulong currentPlayerId)
+    {
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+
+        bool isSelectable = currentPlayerId == localClientId;
+
+        _cardManager.SpawnAndMoveGraveyardCard(cardNumber, isSelectable);
+    }
+
+    /// <summary>
+    /// Bewegt die Graveyardkarte zum Enemy bei allen Clients, auﬂer dem Client, der auf die Karte geklickt hat
+    /// </summary>
+    [Rpc(SendTo.NotMe)]
+    private void MoveGraveyardCardToEnemyDrawnPosClientRpc()
+    {
+        _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void UpdateInteractionStateClientAndHostRpc(ulong currentPlayerId)
+    {
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+
+        bool isCurrentPlayer = currentPlayerId == localClientId;
+
+        Debug.Log("Meine localClientId ist: " + localClientId + " und der Status vom currentPlayer ist: " + isCurrentPlayer);
+
+        UpdateInteractionStateEvent?.Invoke(isCurrentPlayer);
+
+        // Deaktiviere andere Elemente (z. B. Graveyard)
+        Debug.Log($"Interaktionsstatus aktualisiert: {isCurrentPlayer}");
     }
 }
