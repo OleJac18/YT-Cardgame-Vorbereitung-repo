@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -32,14 +33,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     private void OnEnable()
     {
+        GameManager.SetStartSettingsEvent += SetSelectableState;
         GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
-        NetworkCardManager.UpdateInteractionStateEvent += SetInteractivity;
+        GameManager.ChangeCurrentPlayerEvent += SetInteractivity;
     }
 
     private void OnDisable()
     {
+        GameManager.SetStartSettingsEvent -= SetSelectableState;
         GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
-        NetworkCardManager.UpdateInteractionStateEvent -= SetInteractivity;
+        GameManager.ChangeCurrentPlayerEvent -= SetInteractivity;
     }
 
     public int CardNumber
@@ -70,6 +73,17 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void SetCardBackImageVisibility(bool visible)
     {
         cardBackImage.SetActive(visible);
+    }
+
+    private void SetSelectableState(ulong currentPlayerId)
+    {
+        if (_card.correspondingDeck != Card.Stack.GRAVEYARD) return;
+
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+
+        isSelectable = currentPlayerId == localClientId;
+
+        SetInteractivity(isSelectable);
     }
 
     public void SetInteractivity(bool isActive)

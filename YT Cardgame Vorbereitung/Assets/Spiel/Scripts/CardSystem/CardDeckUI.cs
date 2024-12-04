@@ -11,13 +11,13 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
     private void Start()
     {
         GameManager.SetStartSettingsEvent += SetSelectableState;
-        NetworkCardManager.UpdateInteractionStateEvent += SetSelectableState;
+        GameManager.ChangeCurrentPlayerEvent += SetSelectableState;
     }
 
     private void OnDestroy()
     {
         GameManager.SetStartSettingsEvent -= SetSelectableState;
-        NetworkCardManager.UpdateInteractionStateEvent += SetSelectableState;
+        GameManager.ChangeCurrentPlayerEvent += SetSelectableState;
     }
 
     public void OnPointerClick(PointerEventData eventData)

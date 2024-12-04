@@ -11,8 +11,6 @@ public class NetworkCardManager : NetworkBehaviour
 
     private CardManager _cardManager;
 
-    public static event Action<bool> UpdateInteractionStateEvent;
-
     private void Start()
     {
         // Suche zur Laufzeit nach den Instanzen
@@ -22,8 +20,8 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHovered += SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClicked += SetEnemyCardClickClientRpc;
         CardController.OnGraveyardCardClicked += MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        GameManager.StartGameEvent += ServFirstCards;
-        GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
+        GameManager.ServFirstCardEvent += ServFirstCards;
+        //GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
     }
 
     public override void OnDestroy()
@@ -34,8 +32,8 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHovered -= SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClicked -= SetEnemyCardClickClientRpc;
         CardController.OnGraveyardCardClicked -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        GameManager.StartGameEvent -= ServFirstCards;
-        GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
+        GameManager.ServFirstCardEvent -= ServFirstCards;
+        //GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
     }
 
     private void HandleCardDeckClicked()
@@ -191,7 +189,7 @@ public class NetworkCardManager : NetworkBehaviour
         _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform);
     }
 
-    [Rpc(SendTo.ClientsAndHost)]
+    /*[Rpc(SendTo.ClientsAndHost)]
     private void UpdateInteractionStateClientAndHostRpc(ulong currentPlayerId)
     {
         ulong localClientId = NetworkManager.Singleton.LocalClientId;
@@ -204,5 +202,5 @@ public class NetworkCardManager : NetworkBehaviour
 
         // Deaktiviere andere Elemente (z. B. Graveyard)
         Debug.Log($"Interaktionsstatus aktualisiert: {isCurrentPlayer}");
-    }
+    }*/
 }
