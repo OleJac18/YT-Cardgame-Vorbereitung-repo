@@ -21,17 +21,17 @@ public class PlayerUIController : MonoBehaviour
 
     private void Start()
     {
-        GameManager.InitializePlayerUIEvent += Initialize;
-        GameManager.UpdatePlayerUIEvent += SetActivePlayer;
+        PlayerUIManager.InitializePlayerUIEvent += Initialize;
+        PlayerUIManager.UpdatePlayerUIEvent += SetActivePlayer;
     }
 
     private void OnDestroy()
     {
-        GameManager.InitializePlayerUIEvent -= Initialize;
-        GameManager.UpdatePlayerUIEvent -= SetActivePlayer;
+        PlayerUIManager.InitializePlayerUIEvent -= Initialize;
+        PlayerUIManager.UpdatePlayerUIEvent -= SetActivePlayer;
     }
 
-    public void Initialize(PlayerNr playerNr, Player player, bool isCurrentPlayer)
+    private void Initialize(PlayerNr playerNr, Player player, bool isCurrentPlayer)
     {
         if (_playerNr == playerNr)
         {

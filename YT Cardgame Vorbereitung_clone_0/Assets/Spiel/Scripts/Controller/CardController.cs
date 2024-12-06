@@ -33,16 +33,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     private void OnEnable()
     {
-        GameManager.SetStartSettingsEvent += SetSelectableState;
+        GameManager.SetStartSettingsEvent += SetSelectableStateOfGraveyardCard;
         GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
-        GameManager.ChangeCurrentPlayerEvent += SetInteractivity;
+        NetworkCardManager.UpdateInteractionStateEvent += SetInteractivity;
     }
 
     private void OnDisable()
     {
-        GameManager.SetStartSettingsEvent -= SetSelectableState;
+        GameManager.SetStartSettingsEvent -= SetSelectableStateOfGraveyardCard;
         GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
-        GameManager.ChangeCurrentPlayerEvent -= SetInteractivity;
+        NetworkCardManager.UpdateInteractionStateEvent -= SetInteractivity;
     }
 
     public int CardNumber
@@ -75,7 +75,9 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         cardBackImage.SetActive(visible);
     }
 
-    private void SetSelectableState(ulong currentPlayerId)
+    // Nur für die Graveyard Karte
+    // Entscheidet, ob von dem lokalen Spieler die Graveyard Karte angeklickt werden kann
+    private void SetSelectableStateOfGraveyardCard(ulong currentPlayerId)
     {
         if (_card.correspondingDeck != Card.Stack.GRAVEYARD) return;
 

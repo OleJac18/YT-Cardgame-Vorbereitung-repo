@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 public class NetworkCardManager : NetworkBehaviour
@@ -8,6 +9,8 @@ public class NetworkCardManager : NetworkBehaviour
     [Header("UI Elements")]
     [SerializeField] private GameObject _playerDrawnCardPos;
     [SerializeField] private GameObject _enemyDrawnCardPos;
+
+    public static event Action<bool> UpdateInteractionStateEvent;
 
     private CardManager _cardManager;
 
@@ -21,7 +24,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardClicked += SetEnemyCardClickClientRpc;
         CardController.OnGraveyardCardClicked += MoveGraveyardCardToEnemyDrawnPosClientRpc;
         GameManager.ServFirstCardEvent += ServFirstCards;
-        //GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
+        GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
     }
 
     public override void OnDestroy()
@@ -33,7 +36,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardClicked -= SetEnemyCardClickClientRpc;
         CardController.OnGraveyardCardClicked -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
         GameManager.ServFirstCardEvent -= ServFirstCards;
-        //GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
+        GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
     }
 
     private void HandleCardDeckClicked()
@@ -41,7 +44,47 @@ public class NetworkCardManager : NetworkBehaviour
         DrawAndSpawnTopCardServerRpc(NetworkManager.Singleton.LocalClientId);
     }
 
-    private void ServFirstCards(List<ulong> clientIds, ulong currentPlayerId)
+    private void ServFirstCards(PlayerManager playerManager, ulong currentPlayerId)
+    {
+        DistributeCardsToPlayers(playerManager);
+
+        int drawnCard = _cardManager.DrawTopCard();
+        Debug.Log("Ich habe die Karte " + drawnCard + " für das Graveyard gezogen.");
+        SpawnGraveyardCardClientAndHostRpc(drawnCard, currentPlayerId);
+    }
+
+    private void DistributeCardsToPlayers(PlayerManager playerManager)
+    {
+        Dictionary<ulong, Player> _playerDataDict = playerManager.GetPlayerDataDict();
+
+        foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)
+        {
+            ulong id = playerData.Key;
+            Player player = playerData.Value;
+
+            List<int> playerCards = new List<int>();
+            for (int i = 0; i < 4; i++)
+            {
+                int drawnCard = _cardManager.DrawTopCard();
+
+                if (drawnCard != 100)
+                {
+                    playerCards.Add(drawnCard);
+                    player.cards.Add(drawnCard);
+                }
+                else
+                {
+                    Debug.Log("Kartenstapel ist leer.");
+                    return;
+                }
+            }
+
+            SpawnCardsClientRpc(playerCards.ToArray(), RpcTarget.Single(player.id, RpcTargetUse.Temp));
+        }
+    }
+
+
+    /*private void ServFirstCards(List<ulong> clientIds, ulong currentPlayerId)
     {
         DistributeCardsToPlayers(clientIds);
 
@@ -72,7 +115,7 @@ public class NetworkCardManager : NetworkBehaviour
 
             SpawnCardsClientRpc(playerCards.ToArray(), RpcTarget.Single(clientId, RpcTargetUse.Temp));
         }
-    }
+    }*/
 
     //////////////////////////////////////////////////////////////////////////////////////
 
@@ -189,18 +232,14 @@ public class NetworkCardManager : NetworkBehaviour
         _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform);
     }
 
-    /*[Rpc(SendTo.ClientsAndHost)]
+    // Updated die Interaktionsmöglichkeit mit den Spielerkarten, Kartenstapel und Graveyard
+    [Rpc(SendTo.ClientsAndHost)]
     private void UpdateInteractionStateClientAndHostRpc(ulong currentPlayerId)
     {
         ulong localClientId = NetworkManager.Singleton.LocalClientId;
 
         bool isCurrentPlayer = currentPlayerId == localClientId;
 
-        Debug.Log("Meine localClientId ist: " + localClientId + " und der Status vom currentPlayer ist: " + isCurrentPlayer);
-
         UpdateInteractionStateEvent?.Invoke(isCurrentPlayer);
-
-        // Deaktiviere andere Elemente (z. B. Graveyard)
-        Debug.Log($"Interaktionsstatus aktualisiert: {isCurrentPlayer}");
-    }*/
+    }
 }
