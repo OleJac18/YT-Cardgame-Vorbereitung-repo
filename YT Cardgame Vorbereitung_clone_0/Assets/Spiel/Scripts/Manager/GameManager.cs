@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -12,10 +11,6 @@ public enum PlayerAction
 
 public class GameManager : MonoBehaviour
 {
-    public static event Action FlipAllCardsAtGameEndEvent;
-
-
-    //public static event Action<List<ulong>, ulong> ServFirstCardEvent;
     public static event Action<PlayerManager, ulong> ServFirstCardEvent;
 
 
@@ -28,14 +23,13 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        DontDestroyOnLoad(gameObject);
-
+        DontDestroyOnLoad(this);
         _playerManager = new PlayerManager();
         _turnManager = new TurnManager();
-        Debug.Log($"TurnManager initialisiert. Startspieler: {_turnManager.GetCurrentPlayer()}");
     }
 
-    private void Start()
+    // Start is called before the first frame update
+    void Start()
     {
         ConnectionManager.ClientConnectedEvent += OnClientConnected;
     }
@@ -73,7 +67,6 @@ public class GameManager : MonoBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        Debug.Log($"Client {clientId} connected.");
         _playerManager.AddNewPlayer(clientId);
 
         CheckAllClientsConnected();
@@ -112,23 +105,6 @@ public class GameManager : MonoBehaviour
 
     public void PrintPlayerDictionary()
     {
-        Dictionary<ulong, Player> _playerDataDict = _playerManager.GetPlayerDataDict();
-
-        foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)
-        {
-            ulong id = playerData.Key;
-            Player player = playerData.Value;
-
-            Debug.Log("ID: " + id + ", Name: " + player.name + ", Score: " + player.score);
-            for (int i = 0; i < player.cards.Count; i++)
-            {
-                Debug.Log("Karte " + i + ": " + player.cards[i]);
-            }
-        }
-    }
-
-    public void TriggerFlipAllCardsAtGameEnd()
-    {
-        FlipAllCardsAtGameEndEvent?.Invoke();
+        _playerManager.PrintPlayerDictionary();
     }
 }

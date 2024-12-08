@@ -1,12 +1,11 @@
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.GraphicsBuffer;
 
 public class CardManager : MonoBehaviour
 {
-    [Header("UI Elements")]
     [SerializeField] private GameObject _cardPrefab;
     [SerializeField] private GameObject _spawnCardDeckPos;
     [SerializeField] private GameObject _spawnCardPlayerPos;
@@ -15,47 +14,141 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _graveyardPos;
     [SerializeField] private GameObject _playerDrawnCardPos;
 
-    [Header("Interne Variablen")]
-    [SerializeField] private GameObject _cardDeckCard;
-    [SerializeField] private GameObject _graveyardCard;
-
     public int topCardNumber = -1;
 
     [SerializeField] private CardStack _cardStack;
 
+    private GameObject _cardDeckCard;
+    private GameObject _graveyardCard;
+
     // Start is called before the first frame update
     void Start()
     {
+
         if (NetworkManager.Singleton.IsServer)
         {
             _cardStack = new CardStack();
             _cardStack.CreateDeck();
             _cardStack.ShuffleCards();
-        };
+        }
 
-        CardController.OnGraveyardCardClicked += MoveGraveyardCardToPlayerPos;
+        CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
     }
 
     private void OnDestroy()
     {
-        CardController.OnGraveyardCardClicked -= MoveGraveyardCardToPlayerPos;
+        CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
+    }
+
+    public int DrawTopCard()
+    {
+        return _cardStack.DrawTopCard();
     }
 
     public void SpawnAndMoveCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
     {
-        // Spawned eine neue Karte vom Kartenstapel
-        _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent,
-                                    Card.Stack.CARDDECK, true, false, false);
+        // Spawned die oberste Karte vom Kartenstapel
+        _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent, Card.Stack.CARDDECK, true, false, false);
 
         if (flipAtDestination)
         {
-            // Schritt 1: Karte anheben, leicht vergrößern und umdrehen
             FlipAndMoveCard(_cardDeckCard, target);
         }
         else
         {
-            MoveToTargetPosition(_cardDeckCard, target);
+            MoveToDrawnPosition(_cardDeckCard, target);
         }
+
+
+    }
+
+    public void ServFirstCards(int[] playerCards)
+    {
+        StartCoroutine(ServFirstCardsCoroutine(playerCards));
+    }
+
+    IEnumerator ServFirstCardsCoroutine(int[] playerCards)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            yield return new WaitForSeconds(0.5f);
+            // Spawned die Spielerkarten
+            SpawnCard(playerCards[i], _spawnCardPlayerPos, _spawnCardPlayerPos.transform,
+                        Card.Stack.PLAYERCARD, true, true, true);
+
+            // Spawned die Gegnerkarten
+            SpawnCard(99, _spawnCardEnemyPos, _spawnCardEnemyPos.transform,
+                        Card.Stack.ENEMYCARD, true, false, false);
+        }
+    }
+
+    /// <summary>
+    /// Updated den Hoverzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
+    /// </summary>
+    /// <param name="scaleby"></param>
+    /// <param name="index"></param>
+    public void SetEnemyCardHoverEffect(Vector3 scaleBy, int index)
+    {
+        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
+        card.transform.localScale = scaleBy;
+    }
+
+    /// <summary>
+    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
+    public void SetEnemyCardClicked(bool isSelected, int index)
+    {
+        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
+        Outline outline = card.GetComponent<Outline>();
+
+        if (outline == null)
+        {
+            Debug.Log("Das Objekt hat keine Outline");
+        }
+        else
+        {
+            outline.enabled = isSelected;
+        }
+    }
+
+    public void SpawnAndMoveGraveyardCard(int cardNumber, bool isSelectable)
+    {
+        // Spawned eine neue Karte vom Kartenstapel für das Graveyard
+        _graveyardCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent,
+                                    Card.Stack.GRAVEYARD, true, false, isSelectable);
+
+        // Setzt den Parent zuerst vom Table, damit die Karte über dem Kartenstapel ist
+        _graveyardCard.transform.SetParent(_graveyardPos.transform.parent);
+
+        CardController controller = _graveyardCard.GetComponent<CardController>();
+
+        Vector3 target = GetCenteredPosition(_graveyardPos.transform);
+
+        // Bewegen der Karte vom Kartenstapel zum Graveyard
+        LeanTween.move(_graveyardCard, target, 0.5f).setOnComplete(() =>
+        {
+            _graveyardCard.transform.SetParent(_graveyardPos.transform);
+            controller.FlipCardAnimation(false);
+        });
+    }
+
+    private GameObject SpawnCard(int cardNumber, GameObject targetPos, Transform parent, Card.Stack corresDeck, bool backCardIsVisible, bool canHover, bool isSelectable)
+    {
+        GameObject spawnCard = Instantiate(_cardPrefab, targetPos.transform.position, targetPos.transform.rotation);
+
+        spawnCard.transform.SetParent(parent);
+        spawnCard.transform.localScale = Vector3.one;
+
+        CardController controller = spawnCard.GetComponent<CardController>();
+        controller.SetCorrespondingDeck(corresDeck);
+        controller.SetCardBackImageVisibility(backCardIsVisible);
+        controller.CardNumber = cardNumber;
+        controller.canHover = canHover;
+        controller.isSelectable = isSelectable;
+
+        return spawnCard;
     }
 
     private void FlipAndMoveCard(GameObject objectToMove, Transform target)
@@ -63,7 +156,7 @@ public class CardManager : MonoBehaviour
         CardController controller = objectToMove.GetComponent<CardController>();
 
         LeanTween.move(objectToMove, _showDrawnCardPos.transform, 0.5f);
-        LeanTween.scale(objectToMove, Vector3.one * 1.2f, 0.5f).setEase(LeanTweenType.easeOutQuad);
+        LeanTween.scale(objectToMove, Vector3.one * 1.2f, 0.5f);
 
         LeanTween.rotateX(objectToMove, 90.0f, 0.25f).setOnComplete(() =>
         {
@@ -72,19 +165,19 @@ public class CardManager : MonoBehaviour
             {
                 LeanTween.delayedCall(0.5f, () =>
                 {
-                    MoveToTargetPosition(objectToMove, target);
+                    MoveToDrawnPosition(objectToMove, target);
                 });
             });
         });
     }
 
-    private void MoveToTargetPosition(GameObject objectToMove, Transform target)
+    private void MoveToDrawnPosition(GameObject objectToMove, Transform target)
     {
-        // Schritt 2: Karte zum Ziel bewegen und zurück auf Originalgröße skalieren
         Vector3 targetPos = GetCenteredPosition(target);
 
-        LeanTween.move(objectToMove, targetPos, 0.5f).setEase(LeanTweenType.easeInOutQuad);
-        LeanTween.scale(objectToMove, Vector3.one, 0.5f).setEase(LeanTweenType.easeInOutQuad).setOnComplete(() =>
+        LeanTween.scale(objectToMove, Vector3.one, 0.5f);
+
+        LeanTween.move(objectToMove, targetPos, 0.5f).setOnComplete(() =>
         {
             objectToMove.transform.SetParent(target);
         });
@@ -117,127 +210,22 @@ public class CardManager : MonoBehaviour
     {
         RectTransform rectTransform = target.GetComponent<RectTransform>();
 
-        // Berechne die Verschiebung basierend auf Anker und Pivot
         float width = rectTransform.rect.width;
         float height = rectTransform.rect.height;
+
         Vector3 centerOffset = new Vector3(width * (0.5f - rectTransform.pivot.x), height * (0.5f - rectTransform.pivot.y), 0);
 
-        // Berechne und gib die Zielposition in Weltkoordinaten zurück
         return rectTransform.TransformPoint(centerOffset);
     }
 
-    private GameObject SpawnCard(int cardNumber, GameObject targetPos, Transform parent, Card.Stack corresDeck, bool backCardIsVisible, bool canHover, bool isSelectable)
-    {
-        GameObject spawnCard = Instantiate(_cardPrefab, targetPos.transform.position, targetPos.transform.rotation);
-
-        spawnCard.transform.SetParent(parent);
-        spawnCard.transform.localScale = Vector3.one;
-
-        CardController controller = spawnCard.GetComponent<CardController>();
-        controller.SetCorrespondingDeck(corresDeck);
-        controller.SetCardBackImageVisibility(backCardIsVisible);
-        controller.CardNumber = cardNumber;
-        controller.canHover = canHover;
-        controller.isSelectable = isSelectable;
-
-        return spawnCard;
-    }
-
-    public int DrawTopCard()
-    {
-        return _cardStack.DrawTopCard();
-    }
-
-
-    public void ServFirstCards(int[] playerCards)
-    {
-        StartCoroutine(ServFirstCardsCoroutine(playerCards));
-    }
-
-    IEnumerator ServFirstCardsCoroutine(int[] playerCards)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            yield return new WaitForSeconds(0.5f);
-            // Spawned die Spielerkarten
-            SpawnCard(playerCards[i], _spawnCardPlayerPos, _spawnCardPlayerPos.transform,
-                        Card.Stack.PLAYERCARD, true, true, true);
-
-            // Spawned die Gegnerkarten
-            SpawnCard(99, _spawnCardEnemyPos, _spawnCardEnemyPos.transform,
-                        Card.Stack.ENEMYCARD, true, false, false);
-        }
-    }
-
-    /// <summary>
-    /// Updated den Hoverzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
-    /// </summary>
-    /// <param name="scaleby"></param>
-    /// <param name="index"></param>
-    public void SetEnemyCardHoverEffect(Vector3 scaleby, int index)
-    {
-        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
-        card.transform.localScale = scaleby;
-    }
-
-    /// <summary>
-    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
-    /// </summary>
-    /// <param name="isSelected"></param>
-    /// <param name="index"></param>
-    public void SetEnemyCardClick(bool isSelected, int index)
-    {
-        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
-
-        Outline outline = card.GetComponent<Outline>();
-
-        if (outline == null)
-        {
-            Debug.Log("Das Object " + name + " hat keine Komponente Outline");
-            return;
-        }
-
-        outline.enabled = isSelected;
-    }
-
-    public void SpawnAndMoveGraveyardCard(int cardNumber, bool isSelectable)
-    {
-        Debug.Log("Ich will eine Graveyard Karte spawnen");
-
-        // Spawned eine neue Karte vom Kartenstapel für das Graveyard
-        _graveyardCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent,
-                                    Card.Stack.GRAVEYARD, true, false, isSelectable);
-
-        // Setzt den Parent zuerst vom Table, damit die Karte über dem Kartenstapel ist
-        _graveyardCard.transform.SetParent(_graveyardPos.transform.parent);
-
-        CardController controller = _graveyardCard.GetComponent<CardController>();
-
-        Vector3 target = GetCenteredPosition(_graveyardPos.transform);
-
-        // Bewegen der Karte vom Kartenstapel zum Graveyard
-        LeanTween.move(_graveyardCard, target, 0.5f).setOnComplete(() =>
-        {
-            _graveyardCard.transform.SetParent(_graveyardPos.transform);
-            controller.FlipCardAnimation(false);
-        });
-    }
-
-    /// <summary>
-    /// Bewegt die Graveyardkarte zum Spieler, der auch auf die Karte gedrückt hat
-    /// </summary>
     private void MoveGraveyardCardToPlayerPos()
     {
         MoveGraveyardCardToDrawnPos(_playerDrawnCardPos.transform);
     }
 
-    /// <summary>
-    /// Allgemeine Funktion zum Bewegen der Graveyardkarte zu einer bestimmten Position
-    /// </summary>
-    /// <param name="target"></param>
     public void MoveGraveyardCardToDrawnPos(Transform target)
     {
-        MoveToTargetPosition(_graveyardCard, target);
+        MoveToDrawnPosition(_graveyardCard, target);
 
         CardController controller = _graveyardCard.GetComponent<CardController>();
         controller.isSelectable = false;

@@ -1,28 +1,28 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
-using UnityEditor.PackageManager;
 using UnityEngine;
 
 public class NetworkCardManager : NetworkBehaviour
 {
     [Header("UI Elements")]
-    [SerializeField] private GameObject _playerDrawnCardPos;
-    [SerializeField] private GameObject _enemyDrawnCardPos;
+    public GameObject _playerDrawnCardPos;
+    public GameObject _enemyDrawnCardPos;
 
     public static event Action<bool> UpdateInteractionStateEvent;
 
     private CardManager _cardManager;
 
-    private void Start()
+    // Start is called before the first frame update
+    void Start()
     {
-        // Suche zur Laufzeit nach den Instanzen
         _cardManager = FindObjectOfType<CardManager>();
 
         CardDeckUI.OnCardDeckClicked += HandleCardDeckClicked;
-        CardController.OnCardHovered += SetEnemyCardHoverEffectClientRpc;
-        CardController.OnCardClicked += SetEnemyCardClickClientRpc;
-        CardController.OnGraveyardCardClicked += MoveGraveyardCardToEnemyDrawnPosClientRpc;
+        CardController.OnCardHoveredEvent += SetEnemyCardHoverEffectClientRpc;
+        CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
+        CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
         GameManager.ServFirstCardEvent += ServFirstCards;
         GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
     }
@@ -30,18 +30,17 @@ public class NetworkCardManager : NetworkBehaviour
     public override void OnDestroy()
     {
         base.OnDestroy();
-
         CardDeckUI.OnCardDeckClicked -= HandleCardDeckClicked;
-        CardController.OnCardHovered -= SetEnemyCardHoverEffectClientRpc;
-        CardController.OnCardClicked -= SetEnemyCardClickClientRpc;
-        CardController.OnGraveyardCardClicked -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
+        CardController.OnCardHoveredEvent -= SetEnemyCardHoverEffectClientRpc;
+        CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
+        CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
     }
 
     private void HandleCardDeckClicked()
     {
-        DrawAndSpawnTopCardServerRpc(NetworkManager.Singleton.LocalClientId);
+        DrawAndSpawnTopCardServerRpc(NetworkManager.LocalClientId);
     }
 
     private void ServFirstCards(PlayerManager playerManager, ulong currentPlayerId)
@@ -83,53 +82,12 @@ public class NetworkCardManager : NetworkBehaviour
         }
     }
 
-
-    /*private void ServFirstCards(List<ulong> clientIds, ulong currentPlayerId)
-    {
-        DistributeCardsToPlayers(clientIds);
-
-        int drawnCard = _cardManager.DrawTopCard();
-        Debug.Log("Ich habe die Karte " + drawnCard + " für das Graveyard gezogen.");
-        SpawnGraveyardCardClientAndHostRpc(drawnCard, currentPlayerId);
-    }
-
-    private void DistributeCardsToPlayers(List<ulong> clientIds)
-    {
-        foreach (ulong clientId in clientIds)
-        {
-            List<int> playerCards = new List<int>();
-            for (int i = 0; i < 4; i++)
-            {
-                int drawnCard = _cardManager.DrawTopCard();
-
-                if (drawnCard != 100)
-                {
-                    playerCards.Add(drawnCard);
-                }
-                else
-                {
-                    Debug.Log("Kartenstapel ist leer.");
-                    return;
-                }
-            }
-
-            SpawnCardsClientRpc(playerCards.ToArray(), RpcTarget.Single(clientId, RpcTargetUse.Temp));
-        }
-    }*/
-
     //////////////////////////////////////////////////////////////////////////////////////
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="playerCards"></param>
-    /// <param name="rpcParams"></param>
 
     [Rpc(SendTo.SpecifiedInParams)]
     private void SpawnCardsClientRpc(int[] playerCards, RpcParams rpcParams = default)
     {
-        //if (NetworkManager.Singleton.LocalClientId != clientId) return;
-        Debug.Log("Ich bin in der SpawnCardsClientRpc Methode");
+        Debug.Log("Ich bin in der SpawnCardsClientRpc Function");
         _cardManager.ServFirstCards(playerCards);
     }
 
@@ -163,8 +121,6 @@ public class NetworkCardManager : NetworkBehaviour
     [Rpc(SendTo.SpecifiedInParams)]
     public void SpawnCardDeckCardSpecificClientRpc(int cardNumber, RpcParams rpcParams = default)
     {
-        Debug.Log("topCardNumber from ClientRpc Call: " + cardNumber);
-
         // Spawned eine Karte beim Spieler, der auf den Kartenstapel gedrückt hat
         _cardManager.SpawnAndMoveCardToDrawnCardPos(cardNumber, _playerDrawnCardPos.transform, true);
 
@@ -178,8 +134,6 @@ public class NetworkCardManager : NetworkBehaviour
     [Rpc(SendTo.NotMe)]
     private void SpawnCardDeckCardClientRpc()
     {
-        Debug.Log("Client Spawned a CardDeck Card!");
-
         _cardManager.SpawnAndMoveCardToDrawnCardPos(99, _enemyDrawnCardPos.transform, false);
     }
 
@@ -189,10 +143,10 @@ public class NetworkCardManager : NetworkBehaviour
     /// <param name="scaleby"></param>
     /// <param name="index"></param>
     [Rpc(SendTo.NotMe)]
-    private void SetEnemyCardHoverEffectClientRpc(Vector3 scaleby, int index)
+    private void SetEnemyCardHoverEffectClientRpc(Vector3 scaleBy, int index)
     {
         if (IsServer && !IsHost) return;
-        _cardManager.SetEnemyCardHoverEffect(scaleby, index);
+        _cardManager.SetEnemyCardHoverEffect(scaleBy, index);
     }
 
 
@@ -202,11 +156,10 @@ public class NetworkCardManager : NetworkBehaviour
     /// <param name="isSelected"></param>
     /// <param name="index"></param>
     [Rpc(SendTo.NotMe)]
-    private void SetEnemyCardClickClientRpc(bool isSelected, int index)
+    private void SetEnemyCardClickedClientRpc(bool isSelected, int index)
     {
         if (IsServer && !IsHost) return;
-
-        _cardManager.SetEnemyCardClick(isSelected, index);
+        _cardManager.SetEnemyCardClicked(isSelected, index);
     }
 
     /// <summary>
@@ -232,7 +185,10 @@ public class NetworkCardManager : NetworkBehaviour
         _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform);
     }
 
-    // Updated die Interaktionsmöglichkeit mit den Spielerkarten, Kartenstapel und Graveyard
+    /// <summary>
+    /// Updated die Interaktionsmöglichkeit mit den Spielerkarten, Kartenstapel und Graveyard
+    /// </summary>
+    /// <param name="currentPlayerId"></param>
     [Rpc(SendTo.ClientsAndHost)]
     private void UpdateInteractionStateClientAndHostRpc(ulong currentPlayerId)
     {

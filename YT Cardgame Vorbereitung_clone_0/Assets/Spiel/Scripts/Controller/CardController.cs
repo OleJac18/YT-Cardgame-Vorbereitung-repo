@@ -1,6 +1,5 @@
 using System;
 using TMPro;
-using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -12,9 +11,9 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [SerializeField] private GameObject cardBackImage;
     [SerializeField] private Card _card;
 
-    public static event Action<Vector3, int> OnCardHovered; // Event für Hover-Aktionen
-    public static event Action<bool, int> OnCardClicked;    // Event für Klick-Aktionen
-    public static event Action OnGraveyardCardClicked;
+    public static event Action<Vector3, int> OnCardHoveredEvent;
+    public static event Action<bool, int> OnCardClickedEvent;
+    public static event Action OnGraveyardCardClickedEvent;
 
     public bool canHover = false;
     public bool isSelectable = false;
@@ -29,20 +28,6 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _originalScale = Vector3.one;
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
         _card = new Card(13, Card.Stack.NONE);
-    }
-
-    private void OnEnable()
-    {
-        GameManager.SetStartSettingsEvent += SetSelectableStateOfGraveyardCard;
-        GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
-        NetworkCardManager.UpdateInteractionStateEvent += SetInteractivity;
-    }
-
-    private void OnDisable()
-    {
-        GameManager.SetStartSettingsEvent -= SetSelectableStateOfGraveyardCard;
-        GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
-        NetworkCardManager.UpdateInteractionStateEvent -= SetInteractivity;
     }
 
     public int CardNumber
@@ -75,30 +60,6 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         cardBackImage.SetActive(visible);
     }
 
-    // Nur für die Graveyard Karte
-    // Entscheidet, ob von dem lokalen Spieler die Graveyard Karte angeklickt werden kann
-    private void SetSelectableStateOfGraveyardCard(ulong currentPlayerId)
-    {
-        if (_card.correspondingDeck != Card.Stack.GRAVEYARD) return;
-
-        ulong localClientId = NetworkManager.Singleton.LocalClientId;
-
-        isSelectable = currentPlayerId == localClientId;
-
-        SetInteractivity(isSelectable);
-    }
-
-    public void SetInteractivity(bool isActive)
-    {
-        if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
-
-        canHover = isActive;
-        isSelectable = isActive;
-
-        // Optionale visuelle Indikatoren
-        Debug.Log($"Interaktivität der Karte '{name}' auf {isActive} gesetzt.");
-    }
-
     public void OnPointerEnter(PointerEventData eventData)
     {
         // Wenn nicht gehovert werden darf, return
@@ -107,8 +68,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         this.transform.localScale = _hoverScale;
 
         int index = this.transform.GetSiblingIndex();
-        // Event für Hover starten und SiblingIndex als Identifikator weitergeben
-        OnCardHovered?.Invoke(_hoverScale, index);
+        OnCardHoveredEvent?.Invoke(_hoverScale, index);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -119,8 +79,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         this.transform.localScale = _originalScale;
 
         int index = this.transform.GetSiblingIndex();
-        // Event für Hover starten und SiblingIndex als Identifikator weitergeben
-        OnCardHovered?.Invoke(_originalScale, index);
+        OnCardHoveredEvent?.Invoke(_originalScale, index);
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -128,15 +87,14 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         // Wenn nicht gehovert werden darf, return
         if (!isSelectable) return;
 
-        //SelectionAnimation();
-
         if (_card.correspondingDeck == Card.Stack.GRAVEYARD)
         {
-            OnGraveyardCardClicked?.Invoke();
+            OnGraveyardCardClickedEvent?.Invoke();
         }
         else
         {
-            FlipCardAnimation(!cardBackImage.activeSelf);
+            SelectionAnimation();
+            //FlipCardAnimation(!cardBackImage.activeSelf);
         }
     }
 
@@ -151,8 +109,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _outline.enabled = !_outline.enabled;
 
         int index = this.transform.GetSiblingIndex();
-        // Event für Selektieren starten und SiblingIndex als Identifikator weitergeben
-        OnCardClicked?.Invoke(_outline.enabled, index);
+        OnCardClickedEvent?.Invoke(_outline.enabled, index);
     }
 
     public void FlipCardAnimation(bool showCardBack)
@@ -162,14 +119,5 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             cardBackImage.SetActive(showCardBack);
             LeanTween.rotateY(this.gameObject, 0.0f, 0.25f);
         });
-    }
-
-    // Methode, die das Event am Spielende verarbeitet
-    public void FlipCardIfNotFlippedAtGameEnd()
-    {
-        if (cardBackImage.activeSelf) // Nur umdrehen, wenn Rückseite sichtbar
-        {
-            FlipCardAnimation(false); // Hier den Parameter für "showCardBack" auf "false" setzen
-        }
     }
 }
