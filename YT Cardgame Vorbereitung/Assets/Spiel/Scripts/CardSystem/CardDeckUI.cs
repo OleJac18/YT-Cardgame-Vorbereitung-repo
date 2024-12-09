@@ -10,14 +10,14 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
 
     private void Start()
     {
-        GameManager.SetStartSettingsEvent += SetSelectableState;
-        NetworkCardManager.UpdateInteractionStateEvent += SetSelectableState;
+        GameManager.SetStartSettingsEvent += SetStartSelectableState;
+        GameManager.Instance.currentPlayerId.OnValueChanged += SetSelectableState;
     }
 
     private void OnDestroy()
     {
-        GameManager.SetStartSettingsEvent -= SetSelectableState;
-        NetworkCardManager.UpdateInteractionStateEvent -= SetSelectableState;
+        GameManager.SetStartSettingsEvent -= SetStartSelectableState;
+        GameManager.Instance.currentPlayerId.OnValueChanged -= SetSelectableState;
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -28,7 +28,7 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
         Debug.Log("CardDeck geklickt.");
     }
 
-    private void SetSelectableState(ulong currentPlayerId)
+    private void SetStartSelectableState(ulong currentPlayerId)
     {
         ulong localClientId = NetworkManager.Singleton.LocalClientId;
 
@@ -37,8 +37,12 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
         Debug.Log("Meine localClientId ist: " + localClientId + " und der Status von isSelectable im CardDeckUI ist: " + isSelectable);
     }
 
-    private void SetSelectableState(bool isSelectable)
+    private void SetSelectableState(ulong previousPlayerId, ulong currentPlayerId)
     {
-        this.isSelectable = isSelectable;
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+
+        isSelectable = currentPlayerId == localClientId;
+
+        Debug.Log("Meine localClientId ist: " + localClientId + " und der Status von isSelectable im CardDeckUI ist: " + isSelectable);
     }
 }

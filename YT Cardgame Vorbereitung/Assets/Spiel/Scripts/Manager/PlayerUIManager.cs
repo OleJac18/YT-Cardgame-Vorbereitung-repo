@@ -39,16 +39,12 @@ public class PlayerUIManager
             {
                 Debug.Log("CardNumber " + j + " von Spieler" + i + ": " + players[i].cards[j]);
             }
-
-
-
         }
     }
 
     public void UpdatePlayerUI(ulong currentPlayerId)
     {
         bool isCurrentPlayer = currentPlayerId == NetworkManager.Singleton.LocalClientId;
-        //GameManager.ChangeCurrentPlayerEvent?.Invoke(isCurrentPlayer);
 
         //Updated die PlayerUI beim Spieler
         UpdatePlayerUIEvent?.Invoke(currentPlayerId);

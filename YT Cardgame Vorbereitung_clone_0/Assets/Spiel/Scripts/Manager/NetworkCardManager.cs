@@ -10,8 +10,6 @@ public class NetworkCardManager : NetworkBehaviour
     public GameObject _playerDrawnCardPos;
     public GameObject _enemyDrawnCardPos;
 
-    public static event Action<bool> UpdateInteractionStateEvent;
-
     private CardManager _cardManager;
 
     // Start is called before the first frame update
@@ -24,7 +22,6 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
         GameManager.ServFirstCardEvent += ServFirstCards;
-        GameManager.ChangeCurrentPlayerEvent += UpdateInteractionStateClientAndHostRpc;
     }
 
     public override void OnDestroy()
@@ -35,7 +32,6 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
         GameManager.ServFirstCardEvent -= ServFirstCards;
-        GameManager.ChangeCurrentPlayerEvent -= UpdateInteractionStateClientAndHostRpc;
     }
 
     private void HandleCardDeckClicked()
@@ -183,19 +179,5 @@ public class NetworkCardManager : NetworkBehaviour
     private void MoveGraveyardCardToEnemyDrawnPosClientRpc()
     {
         _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform);
-    }
-
-    /// <summary>
-    /// Updated die Interaktionsmöglichkeit mit den Spielerkarten, Kartenstapel und Graveyard
-    /// </summary>
-    /// <param name="currentPlayerId"></param>
-    [Rpc(SendTo.ClientsAndHost)]
-    private void UpdateInteractionStateClientAndHostRpc(ulong currentPlayerId)
-    {
-        ulong localClientId = NetworkManager.Singleton.LocalClientId;
-
-        bool isCurrentPlayer = currentPlayerId == localClientId;
-
-        UpdateInteractionStateEvent?.Invoke(isCurrentPlayer);
     }
 }

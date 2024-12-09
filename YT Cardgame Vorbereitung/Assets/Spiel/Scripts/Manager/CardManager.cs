@@ -1,5 +1,5 @@
+using System;
 using System.Collections;
-using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +13,8 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _showDrawnCardPos;
     [SerializeField] private GameObject _graveyardPos;
     [SerializeField] private GameObject _playerDrawnCardPos;
+
+    public static event Action ShowButtonsEvent;
 
     public int topCardNumber = -1;
 
@@ -180,6 +182,11 @@ public class CardManager : MonoBehaviour
         LeanTween.move(objectToMove, targetPos, 0.5f).setOnComplete(() =>
         {
             objectToMove.transform.SetParent(target);
+
+            LeanTween.delayedCall(0.5f, () =>
+            {
+                ShowButtonsEvent?.Invoke();
+            });
         });
     }
 
