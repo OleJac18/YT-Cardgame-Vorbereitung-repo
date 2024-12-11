@@ -35,6 +35,7 @@ public class CardManager : MonoBehaviour
         }
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
+        ButtonController.DiscardCardEvent += MoveDrawnCardToGraveyardPos;
     }
 
     private void OnDestroy()
@@ -167,13 +168,38 @@ public class CardManager : MonoBehaviour
             {
                 LeanTween.delayedCall(0.5f, () =>
                 {
-                    MoveToDrawnPosition(objectToMove, target);
+                    MoveToDrawnPosition(objectToMove, target, ShowButtonsEvent);
                 });
             });
         });
     }
 
+    /// <summary>
+    /// Mit dieser Funktion wird eine Karte zu einem gewünschten Ziel bewegt.
+    /// </summary>
+    /// <param name="objectToMove"></param>
+    /// <param name="target"></param>
     private void MoveToDrawnPosition(GameObject objectToMove, Transform target)
+    {
+        Vector3 targetPos = GetCenteredPosition(target);
+
+        LeanTween.scale(objectToMove, Vector3.one, 0.5f);
+
+        LeanTween.move(objectToMove, targetPos, 0.5f).setOnComplete(() =>
+        {
+            objectToMove.transform.SetParent(target);
+        });
+    }
+
+    /// <summary>
+    /// Auch mit dieser Funktion wird eine Karte zu einem gewünschten Ziel bewegt.
+    /// Es wird aber noch eine weitere Action übergeben, die ausgeführt wird,
+    /// sobald die Karte am Ziel angekommen ist
+    /// </summary>
+    /// <param name="objectToMove"></param>
+    /// <param name="target"></param>
+    /// <param name="additionalAction"></param>
+    private void MoveToDrawnPosition(GameObject objectToMove, Transform target, Action additionalAction)
     {
         Vector3 targetPos = GetCenteredPosition(target);
 
@@ -185,10 +211,12 @@ public class CardManager : MonoBehaviour
 
             LeanTween.delayedCall(0.5f, () =>
             {
-                ShowButtonsEvent?.Invoke();
+                //ShowButtonsEvent?.Invoke();
+                additionalAction?.Invoke();
             });
         });
     }
+
 
     /// <summary>
     /// Berechne centerOffset:
@@ -232,9 +260,14 @@ public class CardManager : MonoBehaviour
 
     public void MoveGraveyardCardToDrawnPos(Transform target)
     {
-        MoveToDrawnPosition(_graveyardCard, target);
+        MoveToDrawnPosition(_graveyardCard, target, ShowButtonsEvent);
 
         CardController controller = _graveyardCard.GetComponent<CardController>();
         controller.isSelectable = false;
+    }
+
+    private void MoveDrawnCardToGraveyardPos()
+    {
+        MoveToDrawnPosition(_graveyardCard, _graveyardPos.transform);
     }
 }

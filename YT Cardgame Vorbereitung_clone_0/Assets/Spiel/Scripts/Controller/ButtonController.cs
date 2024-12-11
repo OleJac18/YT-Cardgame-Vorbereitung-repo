@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class ButtonController : MonoBehaviour
 {
+    public static event Action DiscardCardEvent;
+
     public Button discardButton;
     public Button exchangeButton;
 
@@ -47,6 +49,7 @@ public class ButtonController : MonoBehaviour
     public void DiscardButtonClicked()
     {
         Debug.Log("Ich möchte die Karte wieder abgeben.");
+        DiscardCardEvent?.Invoke();
     }
 
     public void ExchangeButtonClicked()

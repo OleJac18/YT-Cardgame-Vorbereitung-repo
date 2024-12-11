@@ -25,7 +25,6 @@ public class GameManager : NetworkBehaviour
     public NetworkVariable<ulong> currentPlayerId = new NetworkVariable<ulong>();
 
     public static event Action<PlayerManager, ulong> ServFirstCardEvent;
-    public static event Action<ulong> SetStartSettingsEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
@@ -120,10 +119,6 @@ public class GameManager : NetworkBehaviour
         Debug.Log("currentPlayerId before: " + currentPlayerId.Value);
         currentPlayerId.Value = _turnManager.GetCurrentPlayer();
         Debug.Log("currentPlayerId after: " + currentPlayerId.Value);
-
-        // Übergibt die Id vom Spieler, der am Zug ist, damit entschieden werden kann,
-        // ob der Client das Kartendeck und die Graveyard Karte anklicken können soll
-        SetStartSettingsEvent?.Invoke(currentPlayerId.Value);
 
         // Wirft ein Event, damit die ersten Karten ausgegeben werden
         //List<ulong> clientIds = _playerManager.GetConnectedClientIds();

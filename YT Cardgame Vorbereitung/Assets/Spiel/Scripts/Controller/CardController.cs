@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -18,6 +19,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public bool canHover = false;
     public bool isSelectable = false;
 
+    public bool isFirstRound = true;
+
     private Outline _outline;
     private Vector3 _originalScale;
     private Vector3 _hoverScale;
@@ -28,6 +31,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _originalScale = Vector3.one;
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
         _card = new Card(13, Card.Stack.NONE);
+    }
+
+    private void Start()
+    {
+        GameManager.Instance.currentPlayerId.OnValueChanged += SetSelectableState;
+    }
+
+    private void OnDestroy()
+    {
+        GameManager.Instance.currentPlayerId.OnValueChanged -= SetSelectableState;
     }
 
     public int CardNumber
@@ -119,5 +132,15 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             cardBackImage.SetActive(showCardBack);
             LeanTween.rotateY(this.gameObject, 0.0f, 0.25f);
         });
+    }
+
+    private void SetSelectableState(ulong previousPlayerId, ulong currentPlayerId)
+    {
+        if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
+
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+
+        isSelectable = currentPlayerId == localClientId;
+        canHover = currentPlayerId == localClientId;
     }
 }

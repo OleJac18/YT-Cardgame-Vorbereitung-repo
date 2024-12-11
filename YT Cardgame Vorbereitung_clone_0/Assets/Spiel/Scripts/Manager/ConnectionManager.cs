@@ -21,6 +21,7 @@ public class ConnectionManager : MonoBehaviour
     {
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
+        NetworkManager.Singleton.OnServerStopped += OnServerStopped;
         MainMenu.HostSuccessfullyStartedEvent += SubscribeToSceneEvent;
     }
 
@@ -30,6 +31,7 @@ public class ConnectionManager : MonoBehaviour
         {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
             NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+            NetworkManager.Singleton.OnServerStopped -= OnServerStopped;
             MainMenu.HostSuccessfullyStartedEvent += SubscribeToSceneEvent;
         }
     }
@@ -57,13 +59,20 @@ public class ConnectionManager : MonoBehaviour
 
     private void OnClientDisconnected(ulong clientId)
     {
-        Debug.Log($"Client {clientId} disconnected.");
-        if (NetworkManager.Singleton.IsServer)
+        Debug.Log("Client" + clientId + "disconnected");
+
+        if (!NetworkManager.Singleton.IsServer)
         {
             connectedClients--;
-
-            Debug.Log("Connected Clients: " + connectedClients);
+            SceneManager.LoadScene("MainMenu");
         }
+
+    }
+
+    private void OnServerStopped(bool wasClient)
+    {
+        Debug.Log("Server stopped");
+        SceneManager.LoadScene("MainMenu");
     }
 
     private void OnSceneEvent(SceneEvent sceneEvent)
