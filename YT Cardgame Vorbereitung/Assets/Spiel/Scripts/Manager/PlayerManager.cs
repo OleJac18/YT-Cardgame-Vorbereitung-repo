@@ -5,13 +5,13 @@ public class PlayerManager
 {
     private Dictionary<ulong, Player> _playerDataDict = new Dictionary<ulong, Player>();
 
-    public void AddNewPlayer(ulong clientId)
+    public void AddNewPlayer(ulong clientId, string playerName)
     {
         Debug.Log("Ich will einen neuen Spieler hinzufügen");
 
         if (!_playerDataDict.ContainsKey(clientId))
         {
-            _playerDataDict[clientId] = new Player(clientId, new List<int>(), "Player " + clientId, 0);
+            _playerDataDict[clientId] = new Player(clientId, new List<int>(), playerName, 0);
             Debug.Log("Player " + clientId + " hat sich verbunden");
         }
 

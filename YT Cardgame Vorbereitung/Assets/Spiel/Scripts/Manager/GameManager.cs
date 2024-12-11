@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -8,15 +9,6 @@ public enum PlayerAction
     ChangeCurrentPlayer
 }
 
-public enum GameState
-{
-    WaitingForPlayers,
-    TurnStart,
-    DrawingCard,
-    ChoosingAction,
-    SwappingCards,
-    EndOfTurn
-}
 
 public class GameManager : NetworkBehaviour
 {
@@ -30,6 +22,8 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private TurnManager _turnManager;
     [SerializeField] private NetworkPlayerUIManager _networkPlayerUIManager;
 
+    [SerializeField] private TMP_InputField _nameInputField;
+
     private void Awake()
     {
         DontDestroyOnLoad(this);
@@ -37,14 +31,13 @@ public class GameManager : NetworkBehaviour
 
         _playerManager = new PlayerManager();
         _turnManager = new TurnManager();
-   }
+    }
 
     // Start is called before the first frame update
     void Start()
     {
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-        ConnectionManager.AllClientsConnectedAndSceneLoaded += InitializeGame;
-
+        ConnectionManager.AllClientsConnectedAndSceneLoadedEvent += InitializeGame;
     }
 
     public override void OnNetworkSpawn()
@@ -65,7 +58,7 @@ public class GameManager : NetworkBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         }
 
-        ConnectionManager.AllClientsConnectedAndSceneLoaded -= InitializeGame;
+        ConnectionManager.AllClientsConnectedAndSceneLoadedEvent -= InitializeGame;
     }
 
 
@@ -90,20 +83,9 @@ public class GameManager : NetworkBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        _playerManager.AddNewPlayer(clientId);
-
-        //CheckAllClientsConnected();
+        _playerManager.AddNewPlayer(clientId, _nameInputField.text);
     }
 
-    private void CheckAllClientsConnected()
-    {
-        if (AllClientsConnected())
-        {
-            //_networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
-            //_networkPlayerUIManager.SetPlayerManager(_playerManager);
-            InitializeGame();
-        }
-    }
 
     private bool AllClientsConnected()
     {
@@ -131,5 +113,13 @@ public class GameManager : NetworkBehaviour
     public void PrintPlayerDictionary()
     {
         _playerManager.PrintPlayerDictionary();
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////
+
+    public void SetInputField(TMP_InputField inputField)
+    {
+        _nameInputField = inputField;
     }
 }

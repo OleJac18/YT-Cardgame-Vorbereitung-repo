@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 public class ConnectionManager : MonoBehaviour
 {
-    public static event Action AllClientsConnectedAndSceneLoaded;
+    public static event Action AllClientsConnectedAndSceneLoadedEvent;
 
     private string gameplaySceneName = "Gameplay";
     private int connectedClients = 0;
@@ -47,7 +47,7 @@ public class ConnectionManager : MonoBehaviour
         if (NetworkManager.Singleton.IsServer)
         {
             connectedClients++;
-            Debug.Log("Connected Clients: " +  connectedClients);
+            Debug.Log("Connected Clients: " + connectedClients);
 
             if (connectedClients >= requiredClients && NetworkManager.Singleton.IsServer)
             {
@@ -92,8 +92,8 @@ public class ConnectionManager : MonoBehaviour
 
     private IEnumerator StartInitializationDelayed()
     {
-        yield return new WaitForSeconds(0.5f); 
-        AllClientsConnectedAndSceneLoaded?.Invoke();
+        yield return new WaitForSeconds(0.5f);
+        AllClientsConnectedAndSceneLoadedEvent?.Invoke();
     }
 }
 
