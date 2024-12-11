@@ -34,11 +34,6 @@ public class PlayerUIManager
             {
                 Debug.LogWarning($"Ungültiger PlayerNr-Wert: {i}");
             }
-
-            for (int j = 0; j < players[i].cards.Count; j++)
-            {
-                Debug.Log("CardNumber " + j + " von Spieler" + i + ": " + players[i].cards[j]);
-            }
         }
     }
 

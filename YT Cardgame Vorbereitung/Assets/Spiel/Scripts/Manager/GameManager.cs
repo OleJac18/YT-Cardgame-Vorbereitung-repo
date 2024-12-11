@@ -22,7 +22,7 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    public NetworkVariable<ulong> currentPlayerId = new NetworkVariable<ulong>(0);
+    public NetworkVariable<ulong> currentPlayerId = new NetworkVariable<ulong>();
 
     public static event Action<PlayerManager, ulong> ServFirstCardEvent;
     public static event Action<ulong> SetStartSettingsEvent;
@@ -38,21 +38,35 @@ public class GameManager : NetworkBehaviour
 
         _playerManager = new PlayerManager();
         _turnManager = new TurnManager();
-
-        currentPlayerId.Value = _turnManager.GetCurrentPlayer();
-    }
+   }
 
     // Start is called before the first frame update
     void Start()
     {
-        ConnectionManager.ClientConnectedEvent += OnClientConnected;
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        ConnectionManager.AllClientsConnectedAndSceneLoaded += InitializeGame;
+
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        if (!IsServer) return;
+
+        base.OnNetworkSpawn();
+
+        currentPlayerId.Value = 50;             // Der Variablen wird zu Beginn ein Wert zugewiesen, der nie erreicht werden kann, damit man mitbekommt, wenn man das erste Mal den currentPlayer aus TurnManager holt um einen Change in der Variablen mitzubekommen
     }
 
     public override void OnDestroy()
     {
         base.OnDestroy();
 
-        ConnectionManager.ClientConnectedEvent -= OnClientConnected;
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        }
+
+        ConnectionManager.AllClientsConnectedAndSceneLoaded -= InitializeGame;
     }
 
 
@@ -79,15 +93,15 @@ public class GameManager : NetworkBehaviour
 
         _playerManager.AddNewPlayer(clientId);
 
-        CheckAllClientsConnected();
+        //CheckAllClientsConnected();
     }
 
     private void CheckAllClientsConnected()
     {
         if (AllClientsConnected())
         {
-            _networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
-            _networkPlayerUIManager.SetPlayerManager(_playerManager);
+            //_networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
+            //_networkPlayerUIManager.SetPlayerManager(_playerManager);
             InitializeGame();
         }
     }
@@ -99,8 +113,13 @@ public class GameManager : NetworkBehaviour
 
     private void InitializeGame()
     {
+        _networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
+        _networkPlayerUIManager.SetPlayerManager(_playerManager);
+
         _turnManager.SetStartPlayer(_playerManager);
+        Debug.Log("currentPlayerId before: " + currentPlayerId.Value);
         currentPlayerId.Value = _turnManager.GetCurrentPlayer();
+        Debug.Log("currentPlayerId after: " + currentPlayerId.Value);
 
         // Übergibt die Id vom Spieler, der am Zug ist, damit entschieden werden kann,
         // ob der Client das Kartendeck und die Graveyard Karte anklicken können soll
