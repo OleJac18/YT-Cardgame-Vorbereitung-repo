@@ -68,6 +68,11 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _card.correspondingDeck = decktype;
     }
 
+    public Card.Stack GetCorrespondingDeck()
+    {
+        return _card.correspondingDeck;
+    }
+
     public void SetCardBackImageVisibility(bool visible)
     {
         cardBackImage.SetActive(visible);

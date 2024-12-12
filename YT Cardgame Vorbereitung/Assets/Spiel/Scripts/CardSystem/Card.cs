@@ -7,7 +7,7 @@ public class Card
 {
     public enum Stack
     {
-        NONE, PLAYERCARD, ENEMYCARD, CARDDECK, GRAVEYARD
+        NONE, PLAYERCARD, ENEMYCARD, CARDDECK, GRAVEYARD, DRAWNCARD
     }
 
     public int number;

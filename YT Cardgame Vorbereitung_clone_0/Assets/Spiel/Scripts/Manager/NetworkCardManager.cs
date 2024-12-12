@@ -19,6 +19,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHoveredEvent += SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
+        ButtonController.DiscardCardEvent += MoveEnemyCardToGraveyardPosClientRpc;
         GameManager.ServFirstCardEvent += ServFirstCards;
     }
 
@@ -29,6 +30,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHoveredEvent -= SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
+        ButtonController.DiscardCardEvent -= MoveEnemyCardToGraveyardPosClientRpc;
         GameManager.ServFirstCardEvent -= ServFirstCards;
     }
 
@@ -116,7 +118,7 @@ public class NetworkCardManager : NetworkBehaviour
     public void SpawnCardDeckCardSpecificClientRpc(int cardNumber, RpcParams rpcParams = default)
     {
         // Spawned eine Karte beim Spieler, der auf den Kartenstapel gedrückt hat
-        _cardManager.SpawnAndMoveCardToDrawnCardPos(cardNumber, _playerDrawnCardPos.transform, true);
+        _cardManager.SpawnAndMoveCardDeckCardToDrawnCardPos(cardNumber, _playerDrawnCardPos.transform, true);
 
         // Spawned bei allen anderen Clients eine Karte vom Kartendeck
         SpawnCardDeckCardClientRpc();
@@ -128,7 +130,7 @@ public class NetworkCardManager : NetworkBehaviour
     [Rpc(SendTo.NotMe)]
     private void SpawnCardDeckCardClientRpc()
     {
-        _cardManager.SpawnAndMoveCardToDrawnCardPos(99, _enemyDrawnCardPos.transform, false);
+        _cardManager.SpawnAndMoveCardDeckCardToDrawnCardPos(99, _enemyDrawnCardPos.transform, false);
     }
 
     /// <summary>
@@ -176,6 +178,16 @@ public class NetworkCardManager : NetworkBehaviour
     [Rpc(SendTo.NotMe)]
     private void MoveGraveyardCardToEnemyDrawnPosClientRpc()
     {
-        _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform);
+        _cardManager.MoveGraveyardCardToDrawnPos(_enemyDrawnCardPos.transform, false);
+    }
+
+
+    /// <summary>
+    /// Bewegt die Graveyardkarte zum Enemy bei allen Clients, außer dem Client, der auf die Karte geklickt hat
+    /// </summary>
+    [Rpc(SendTo.NotMe)]
+    private void MoveEnemyCardToGraveyardPosClientRpc()
+    {
+        _cardManager.MoveDrawnCardToGraveyardPos();
     }
 }

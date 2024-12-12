@@ -3,6 +3,7 @@ using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEngine.GraphicsBuffer;
 
 public class CardManager : MonoBehaviour
 {
@@ -15,13 +16,15 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _playerDrawnCardPos;
 
     public static event Action ShowButtonsEvent;
+    public static event Action EndTurnEvent;
 
     public int topCardNumber = -1;
 
     [SerializeField] private CardStack _cardStack;
 
-    private GameObject _cardDeckCard;
-    private GameObject _graveyardCard;
+    [SerializeField] private GameObject _cardDeckCard;
+    [SerializeField] private GameObject _graveyardCard;
+    [SerializeField] private GameObject _drawnCard;
 
     // Start is called before the first frame update
     void Start()
@@ -41,28 +44,12 @@ public class CardManager : MonoBehaviour
     private void OnDestroy()
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
+        ButtonController.DiscardCardEvent -= MoveDrawnCardToGraveyardPos;
     }
 
     public int DrawTopCard()
     {
         return _cardStack.DrawTopCard();
-    }
-
-    public void SpawnAndMoveCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
-    {
-        // Spawned die oberste Karte vom Kartenstapel
-        _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent, Card.Stack.CARDDECK, true, false, false);
-
-        if (flipAtDestination)
-        {
-            FlipAndMoveCard(_cardDeckCard, target);
-        }
-        else
-        {
-            MoveToDrawnPosition(_cardDeckCard, target);
-        }
-
-
     }
 
     public void ServFirstCards(int[] playerCards)
@@ -116,6 +103,41 @@ public class CardManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Berechne centerOffset:
+    /// target.pivot.x und target.pivot.y geben an, wo der Pivot relativ zur Größe des RectTransform liegt.Ein Pivot von(0.5, 0.5) bedeutet, 
+    /// dass der Mittelpunkt bereits in der Mitte liegt, bei(0, 0) liegt er unten links usw. Durch width * (0.5f - target.pivot.x) wird die 
+    /// X-Verschiebung vom tatsächlichen Pivot zum gedachten Mittelpunkt berechnet.Dasselbe gilt für die Y-Achse mit height* (0.5f - target.pivot.y).
+    /// 
+    /// Konvertiere in Weltkoordinaten:
+    /// Die Methode TransformPoint(centerOffset) wendet die berechnete Verschiebung auf die Weltposition des RectTransform an, 
+    /// sodass targetPos das Ziel anzeigt, als wäre der Pivot in der Mitte.
+    /// 
+    /// Der Ausdruck 0.5f - target.pivot.y funktioniert wie folgt:
+    /// Wenn target.pivot.y bei 0.5 liegt (Mitte): 0.5f - 0.5f = 0. Kein Offset ist nötig, weil der Pivot bereits in der Mitte liegt.
+    /// Wenn target.pivot.y bei 0 liegt (unten): 0.5f - 0 = 0.5. Der Offset verschiebt die Position nach oben, um den unteren Pivot so anzupassen, dass es aussieht, als wäre er in der Mitte.
+    /// Wenn target.pivot.y bei 1 liegt (oben): 0.5f - 1 = -0.5. Der Offset verschiebt die Position nach unten, um die obere Kante so anzupassen, dass es aussieht, als wäre der Pivot in der Mitte.
+    /// Warum der Offset notwendig ist
+    /// 
+    /// Wenn wir die Höhe des RectTransform berücksichtigen, indem wir sie mit diesem Offset multiplizieren (height* (0.5f - target.pivot.y)), erhalten wir den notwendigen Abstand in lokalen 
+    /// Koordinaten:
+    /// Ein Wert von +0.5 * height verschiebt das Objekt um die halbe Höhe nach oben.
+    /// Ein Wert von -0.5 * height verschiebt es um die halbe Höhe nach unten.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <returns></returns>
+    private Vector3 GetCenteredPosition(Transform target)
+    {
+        RectTransform rectTransform = target.GetComponent<RectTransform>();
+
+        float width = rectTransform.rect.width;
+        float height = rectTransform.rect.height;
+
+        Vector3 centerOffset = new Vector3(width * (0.5f - rectTransform.pivot.x), height * (0.5f - rectTransform.pivot.y), 0);
+
+        return rectTransform.TransformPoint(centerOffset);
+    }
+
     public void SpawnAndMoveGraveyardCard(int cardNumber, bool isSelectable)
     {
         // Spawned eine neue Karte vom Kartenstapel für das Graveyard
@@ -154,6 +176,25 @@ public class CardManager : MonoBehaviour
         return spawnCard;
     }
 
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Bewegung der _cardDeckCard zur DrawnCardPos
+
+    public void SpawnAndMoveCardDeckCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
+    {
+        // Spawned die oberste Karte vom Kartenstapel
+        _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent, Card.Stack.CARDDECK, true, false, false);
+
+        if (flipAtDestination)
+        {
+            FlipAndMoveCard(_cardDeckCard, target);
+        }
+        else
+        {
+            MoveToDrawnPosition(_cardDeckCard, target, false);
+        }
+    }
+
     private void FlipAndMoveCard(GameObject objectToMove, Transform target)
     {
         CardController controller = objectToMove.GetComponent<CardController>();
@@ -168,7 +209,7 @@ public class CardManager : MonoBehaviour
             {
                 LeanTween.delayedCall(0.5f, () =>
                 {
-                    MoveToDrawnPosition(objectToMove, target, ShowButtonsEvent);
+                    MoveToDrawnPosition(objectToMove, target, true);
                 });
             });
         });
@@ -179,95 +220,101 @@ public class CardManager : MonoBehaviour
     /// </summary>
     /// <param name="objectToMove"></param>
     /// <param name="target"></param>
-    private void MoveToDrawnPosition(GameObject objectToMove, Transform target)
+    private void MoveToDrawnPosition(GameObject objectToMove, Transform target, bool showButton)
     {
         Vector3 targetPos = GetCenteredPosition(target);
 
         LeanTween.scale(objectToMove, Vector3.one, 0.5f);
 
-        LeanTween.move(objectToMove, targetPos, 0.5f).setOnComplete(() =>
+        LeanTween.move(objectToMove, targetPos, 0.5f).setOnComplete((Action)(() =>
         {
             objectToMove.transform.SetParent(target);
-        });
+
+            SetCardToDrawnCard(objectToMove, showButton);
+        }));
     }
 
+
     /// <summary>
-    /// Auch mit dieser Funktion wird eine Karte zu einem gewünschten Ziel bewegt.
-    /// Es wird aber noch eine weitere Action übergeben, die ausgeführt wird,
-    /// sobald die Karte am Ziel angekommen ist
+    /// Ist für die 
     /// </summary>
     /// <param name="objectToMove"></param>
-    /// <param name="target"></param>
-    /// <param name="additionalAction"></param>
-    private void MoveToDrawnPosition(GameObject objectToMove, Transform target, Action additionalAction)
+    /// <param name="newObject"></param>
+    private void SetCardToDrawnCard(GameObject objectToMove, bool showButton)
     {
-        Vector3 targetPos = GetCenteredPosition(target);
+        // Überschreibt die bewegte Karte auf die _drawnCard
+        _drawnCard = objectToMove;
 
-        LeanTween.scale(objectToMove, Vector3.one, 0.5f);
+        // Guckt welche Karte bewegt worden ist und löscht diese im Anschluss
+        CardController ControllerobjToMove = objectToMove.GetComponent<CardController>();
+        Card.Stack corresDeck = ControllerobjToMove.GetCorrespondingDeck();
 
-        LeanTween.move(objectToMove, targetPos, 0.5f).setOnComplete(() =>
+
+        if (corresDeck == Card.Stack.GRAVEYARD)
         {
-            objectToMove.transform.SetParent(target);
+            _graveyardCard = null;
+        }
+        else
+        {
+            _cardDeckCard = null;
+        }
 
-            LeanTween.delayedCall(0.5f, () =>
-            {
-                //ShowButtonsEvent?.Invoke();
-                additionalAction?.Invoke();
-            });
-        });
-    }
+        // Ändert das correspondingDeck von der _drawnCard
+        CardController controllerDrawnCard = _drawnCard.GetComponent<CardController>();
+        controllerDrawnCard.SetCorrespondingDeck(Card.Stack.DRAWNCARD);
 
-
-    /// <summary>
-    /// Berechne centerOffset:
-    /// target.pivot.x und target.pivot.y geben an, wo der Pivot relativ zur Größe des RectTransform liegt.Ein Pivot von(0.5, 0.5) bedeutet, 
-    /// dass der Mittelpunkt bereits in der Mitte liegt, bei(0, 0) liegt er unten links usw. Durch width * (0.5f - target.pivot.x) wird die 
-    /// X-Verschiebung vom tatsächlichen Pivot zum gedachten Mittelpunkt berechnet.Dasselbe gilt für die Y-Achse mit height* (0.5f - target.pivot.y).
-    /// 
-    /// Konvertiere in Weltkoordinaten:
-    /// Die Methode TransformPoint(centerOffset) wendet die berechnete Verschiebung auf die Weltposition des RectTransform an, 
-    /// sodass targetPos das Ziel anzeigt, als wäre der Pivot in der Mitte.
-    /// 
-    /// Der Ausdruck 0.5f - target.pivot.y funktioniert wie folgt:
-    /// Wenn target.pivot.y bei 0.5 liegt (Mitte): 0.5f - 0.5f = 0. Kein Offset ist nötig, weil der Pivot bereits in der Mitte liegt.
-    /// Wenn target.pivot.y bei 0 liegt (unten): 0.5f - 0 = 0.5. Der Offset verschiebt die Position nach oben, um den unteren Pivot so anzupassen, dass es aussieht, als wäre er in der Mitte.
-    /// Wenn target.pivot.y bei 1 liegt (oben): 0.5f - 1 = -0.5. Der Offset verschiebt die Position nach unten, um die obere Kante so anzupassen, dass es aussieht, als wäre der Pivot in der Mitte.
-    /// Warum der Offset notwendig ist
-    /// 
-    /// Wenn wir die Höhe des RectTransform berücksichtigen, indem wir sie mit diesem Offset multiplizieren (height* (0.5f - target.pivot.y)), erhalten wir den notwendigen Abstand in lokalen 
-    /// Koordinaten:
-    /// Ein Wert von +0.5 * height verschiebt das Objekt um die halbe Höhe nach oben.
-    /// Ein Wert von -0.5 * height verschiebt es um die halbe Höhe nach unten.
-    /// </summary>
-    /// <param name="target"></param>
-    /// <returns></returns>
-    private Vector3 GetCenteredPosition(Transform target)
-    {
-        RectTransform rectTransform = target.GetComponent<RectTransform>();
-
-        float width = rectTransform.rect.width;
-        float height = rectTransform.rect.height;
-
-        Vector3 centerOffset = new Vector3(width * (0.5f - rectTransform.pivot.x), height * (0.5f - rectTransform.pivot.y), 0);
-
-        return rectTransform.TransformPoint(centerOffset);
+        // Guckt, ob die Buttons zum Abwerfen oder Tauschen angezeigt werden sollen
+        if (showButton)
+        {
+            ShowButtonsEvent?.Invoke();
+        }
     }
 
     private void MoveGraveyardCardToPlayerPos()
     {
-        MoveGraveyardCardToDrawnPos(_playerDrawnCardPos.transform);
+        MoveGraveyardCardToDrawnPos(_playerDrawnCardPos.transform, true);
     }
 
-    public void MoveGraveyardCardToDrawnPos(Transform target)
+    public void MoveGraveyardCardToDrawnPos(Transform target, bool showButton)
     {
-        MoveToDrawnPosition(_graveyardCard, target, ShowButtonsEvent);
+        MoveToDrawnPosition(_graveyardCard, target, showButton);
 
         CardController controller = _graveyardCard.GetComponent<CardController>();
         controller.isSelectable = false;
     }
 
-    private void MoveDrawnCardToGraveyardPos()
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Bewegung der DrawnCard zum Graveyard
+
+
+    public void MoveDrawnCardToGraveyardPos()
     {
-        MoveToDrawnPosition(_graveyardCard, _graveyardPos.transform);
+        Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
+
+
+        // Bewegt die Karte zum Graveyard
+        LeanTween.move(_drawnCard, targetPos, 0.5f).setOnComplete(() =>
+        {
+            _drawnCard.transform.SetParent(_graveyardPos.transform);
+
+            SetCardToGraveyardCard();
+        });
+    }
+
+    /// <summary>
+    /// Überträgt das _drawnCard GameObject auf das _graveyardCard GameObject und löscht das _drawnCard GameObject
+    /// Ändert das correspondingDeck auf GRAVEYARD
+    /// </summary>
+    private void SetCardToGraveyardCard()
+    {
+        _graveyardCard = _drawnCard;
+
+        CardController controllerDrawnCard = _graveyardCard.GetComponent<CardController>();
+        controllerDrawnCard.SetCorrespondingDeck(Card.Stack.GRAVEYARD);
+
+        _drawnCard = null;
+
+        EndTurnEvent?.Invoke();
     }
 }

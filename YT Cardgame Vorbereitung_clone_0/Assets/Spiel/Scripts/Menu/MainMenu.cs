@@ -6,14 +6,6 @@ using UnityEngine;
 public class MainMenu : MonoBehaviour
 {
     public static event Action HostSuccessfullyStartedEvent;
-    public static event Action<ulong, string> NewPlayerConnectedEvent;
-
-    [SerializeField] private TMP_InputField _nameInputField;
-
-    private void Start()
-    {
-        SendInputToGameManager();
-    }
 
     public void StartHost()
     {
@@ -23,7 +15,6 @@ public class MainMenu : MonoBehaviour
         if (success)
         {
             HostSuccessfullyStartedEvent?.Invoke();
-            NewPlayerConnectedEvent?.Invoke(NetworkManager.Singleton.LocalClientId, _nameInputField.text);
         }
 
     }
@@ -36,7 +27,6 @@ public class MainMenu : MonoBehaviour
         if (success)
         {
             HostSuccessfullyStartedEvent?.Invoke();
-            NewPlayerConnectedEvent?.Invoke(NetworkManager.Singleton.LocalClientId, _nameInputField.text);
         }
     }
 
@@ -48,19 +38,6 @@ public class MainMenu : MonoBehaviour
         if (success)
         {
             HostSuccessfullyStartedEvent?.Invoke();
-            NewPlayerConnectedEvent?.Invoke(NetworkManager.Singleton.LocalClientId, _nameInputField.text);
-        }
-    }
-
-    public void SendInputToGameManager()
-    {
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.SetInputField(_nameInputField);
-        }
-        else
-        {
-            Debug.LogWarning("GameManager Instance not found!");
         }
     }
 }

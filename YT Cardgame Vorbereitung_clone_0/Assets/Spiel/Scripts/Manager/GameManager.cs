@@ -36,8 +36,7 @@ public class GameManager : NetworkBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-        ConnectionManager.AllClientsConnectedAndSceneLoadedEvent += InitializeGame;
+        CardManager.EndTurnEvent += EndTurn;
     }
 
     public override void OnNetworkSpawn()
@@ -45,6 +44,9 @@ public class GameManager : NetworkBehaviour
         if (!IsServer) return;
 
         base.OnNetworkSpawn();
+
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        ConnectionManager.AllClientsConnectedAndSceneLoadedEvent += InitializeGame;
 
         currentPlayerId.Value = 50;             // Der Variablen wird zu Beginn ein Wert zugewiesen, der nie erreicht werden kann, damit man mitbekommt, wenn man das erste Mal den currentPlayer aus TurnManager holt um einen Change in der Variablen mitzubekommen
     }
@@ -59,6 +61,17 @@ public class GameManager : NetworkBehaviour
         }
 
         ConnectionManager.AllClientsConnectedAndSceneLoadedEvent -= InitializeGame;
+        CardManager.EndTurnEvent += EndTurn;
+    }
+
+    private void EndTurn()
+    {
+        if (IsServer && _turnManager != null)
+        {
+            _turnManager.NextTurn();
+            currentPlayerId.Value = _turnManager.GetCurrentPlayer();
+            Debug.Log("currentPlayerId: " + currentPlayerId.Value);
+        }
     }
 
 
@@ -83,7 +96,7 @@ public class GameManager : NetworkBehaviour
     {
         if (!NetworkManager.Singleton.IsServer) return;
 
-        _playerManager.AddNewPlayer(clientId, _nameInputField.text);
+        _playerManager.AddNewPlayer(clientId);
     }
 
 
