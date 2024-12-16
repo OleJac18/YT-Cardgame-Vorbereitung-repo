@@ -6,6 +6,7 @@ using UnityEngine.UI;
 public class ButtonController : MonoBehaviour
 {
     public static event Action DiscardCardEvent;
+    public static event Action ExchangeCardEvent;
 
     public Button discardButton;
     public Button exchangeButton;
@@ -49,5 +50,6 @@ public class ButtonController : MonoBehaviour
     {
         Debug.Log("Ich möchte die Karte mit einer anderen Karte tauschen.");
         HidePlayerButton();
+        ExchangeCardEvent?.Invoke();
     }
 }

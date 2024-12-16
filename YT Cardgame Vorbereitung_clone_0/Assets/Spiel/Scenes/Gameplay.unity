@@ -2978,6 +2978,7 @@ MonoBehaviour:
   _cardDeckCard: {fileID: 0}
   _graveyardCard: {fileID: 0}
   _drawnCard: {fileID: 0}
+  _clickedCards: 
 --- !u!4 &1935967951
 Transform:
   m_ObjectHideFlags: 0

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,9 +27,12 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _graveyardCard;
     [SerializeField] private GameObject _drawnCard;
 
+    [SerializeField] private bool[] _clickedCards;
+
     // Start is called before the first frame update
     void Start()
     {
+        _clickedCards = new bool[4];
 
         if (NetworkManager.Singleton.IsServer)
         {
@@ -39,17 +43,26 @@ public class CardManager : MonoBehaviour
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
         ButtonController.DiscardCardEvent += MoveDrawnCardToGraveyardPos;
+        CardController.OnCardClickedEvent += SetClickedCards;
+        ButtonController.ExchangeCardEvent += ExchangePlayerCards;
     }
 
     private void OnDestroy()
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
         ButtonController.DiscardCardEvent -= MoveDrawnCardToGraveyardPos;
+        CardController.OnCardClickedEvent -= SetClickedCards;
+        ButtonController.ExchangeCardEvent -= ExchangePlayerCards;
     }
 
     public int DrawTopCard()
     {
         return _cardStack.DrawTopCard();
+    }
+
+    public void SetClickedCards(bool isSelected, int index)
+    {
+        _clickedCards[index] = isSelected;
     }
 
     public void ServFirstCards(int[] playerCards)
@@ -246,8 +259,8 @@ public class CardManager : MonoBehaviour
         _drawnCard = objectToMove;
 
         // Guckt welche Karte bewegt worden ist und löscht diese im Anschluss
-        CardController ControllerobjToMove = objectToMove.GetComponent<CardController>();
-        Card.Stack corresDeck = ControllerobjToMove.GetCorrespondingDeck();
+        CardController controllerObjToMove = objectToMove.GetComponent<CardController>();
+        Card.Stack corresDeck = controllerObjToMove.GetCorrespondingDeck();
 
 
         if (corresDeck == Card.Stack.GRAVEYARD)
@@ -292,13 +305,14 @@ public class CardManager : MonoBehaviour
     {
         Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
 
-
         // Bewegt die Karte zum Graveyard
         LeanTween.move(_drawnCard, targetPos, 0.5f).setOnComplete(() =>
         {
             _drawnCard.transform.SetParent(_graveyardPos.transform);
 
-            SetCardToGraveyardCard();
+            SetCardToGraveyardCard(_drawnCard);
+            _drawnCard = null;
+            EndTurnEvent?.Invoke();
         });
     }
 
@@ -306,15 +320,97 @@ public class CardManager : MonoBehaviour
     /// Überträgt das _drawnCard GameObject auf das _graveyardCard GameObject und löscht das _drawnCard GameObject
     /// Ändert das correspondingDeck auf GRAVEYARD
     /// </summary>
-    private void SetCardToGraveyardCard()
+    private void SetCardToGraveyardCard(GameObject objectToMove)
     {
-        _graveyardCard = _drawnCard;
+        _graveyardCard = objectToMove;
 
         CardController controllerDrawnCard = _graveyardCard.GetComponent<CardController>();
         controllerDrawnCard.SetCorrespondingDeck(Card.Stack.GRAVEYARD);
 
-        _drawnCard = null;
 
-        EndTurnEvent?.Invoke();
     }
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Bewegung der DrawnCard zum Spieler
+
+    public int FindFirstTrueIndex(bool[] boolArray)
+    {
+        for (int i = 0; i < boolArray.Length; i++)
+        {
+            if (boolArray[i])
+            {
+                return i; // Gibt den Index des ersten Elements zurück, das true ist
+            }
+        }
+        return -1; // Gibt -1 zurück, wenn kein true gefunden wurde
+    }
+
+    public void ExchangeEnemyCards()
+    {
+        ExchangeCards(_spawnCardEnemyPos);
+    }
+
+    public void ExchangePlayerCards()
+    {
+        ExchangeCards(_spawnCardPlayerPos);
+    }
+
+
+    public void ExchangeCards(GameObject playerPanel)
+    {
+        MovePlayerCardsToGraveyardPos(playerPanel);
+        MoveDrawnCardToTarget(playerPanel);
+    }
+
+    public void MovePlayerCardsToGraveyardPos(GameObject playerPanel)
+    {
+        // Erste Karte finden, die geklickt wurde
+        int index = FindFirstTrueIndex(_clickedCards);
+        GameObject _firstSelectedCard = playerPanel.transform.GetChild(index).gameObject;
+
+        Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
+
+        // Bewegt die Karte zum Graveyard
+        LeanTween.move(_firstSelectedCard, targetPos, 0.5f).setOnComplete(() =>
+        {
+            _firstSelectedCard.transform.SetParent(_graveyardPos.transform);
+
+            SetCardToGraveyardCard(_firstSelectedCard);
+        });
+    }
+
+    private void MoveDrawnCardToTarget(GameObject playerPanel)
+    {
+        // Erste Karte finden, die geklickt wurde
+        int index = FindFirstTrueIndex(_clickedCards);
+        GameObject _firstSelectedCard = playerPanel.transform.GetChild(index).gameObject;
+
+        // Herausfinden, ob man der aktuelle Spieler ist, damit man sagen kann, wie der Bogen bei der Bewegung sein soll
+        int rotation;
+        bool isCurrentPlayer = GameManager.Instance.currentPlayerId.Value == NetworkManager.Singleton.LocalClientId;
+
+        rotation = isCurrentPlayer ? 1 : -1;
+
+        Vector3[] points = MoveInCircle.CalculateCircle(8, _drawnCard.transform, _firstSelectedCard.transform, rotation, 100);
+        LeanTween.moveSpline(_drawnCard, points, 0.5f).setOnComplete(() =>
+        {
+            CardController controller = _drawnCard.GetComponent<CardController>();
+            controller.FlipCardAnimation(true);
+
+            // Parent der bewegten Karte zu dem spezifischen Playerpanel setzen und an die richtige Position
+            _drawnCard.transform.SetParent(playerPanel.transform);
+            _drawnCard.transform.SetSiblingIndex(index);
+
+            // Gezogene Karte intern löschen und den Zug beenden
+            _drawnCard = null;
+            ResetClickedCards();
+            EndTurnEvent?.Invoke();
+        });
+    }
+
+    private void ResetClickedCards()
+    {
+        Array.Fill(_clickedCards, false);
+    }
+
 }

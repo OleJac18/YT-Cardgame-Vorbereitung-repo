@@ -21,6 +21,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
         ButtonController.DiscardCardEvent += MoveEnemyCardToGraveyardPosClientRpc;
         GameManager.ServFirstCardEvent += ServFirstCards;
+        ButtonController.ExchangeCardEvent += MoveDrawnCardToEnemyClientRpc;
     }
 
     public override void OnDestroy()
@@ -32,6 +33,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
         ButtonController.DiscardCardEvent -= MoveEnemyCardToGraveyardPosClientRpc;
         GameManager.ServFirstCardEvent -= ServFirstCards;
+        ButtonController.ExchangeCardEvent -= MoveDrawnCardToEnemyClientRpc;
     }
 
     private void HandleCardDeckClicked()
@@ -156,6 +158,7 @@ public class NetworkCardManager : NetworkBehaviour
     {
         if (IsServer && !IsHost) return;
         _cardManager.SetEnemyCardClicked(isSelected, index);
+        _cardManager.SetClickedCards(isSelected, index);
     }
 
     /// <summary>
@@ -183,11 +186,20 @@ public class NetworkCardManager : NetworkBehaviour
 
 
     /// <summary>
-    /// Bewegt die Graveyardkarte zum Enemy bei allen Clients, auﬂer dem Client, der auf die Karte geklickt hat
+    /// Bewegt die Enemy Karte zum Graveyard bei allen Clients, auﬂer dem Client, der auf die Karte geklickt hat
     /// </summary>
     [Rpc(SendTo.NotMe)]
     private void MoveEnemyCardToGraveyardPosClientRpc()
     {
         _cardManager.MoveDrawnCardToGraveyardPos();
+    }
+
+    /// <summary>
+    /// Bewegt die gezogene Karte zu der ersten ausgew‰hlten Karte beim Enemy
+    /// </summary>
+    [Rpc(SendTo.NotMe)]
+    private void MoveDrawnCardToEnemyClientRpc()
+    {
+        _cardManager.ExchangeEnemyCards();
     }
 }
