@@ -67,7 +67,7 @@ public class NetworkCardManager : NetworkBehaviour
                 if (drawnCard != 100)
                 {
                     playerCards.Add(drawnCard);
-                    player.cards.Add(drawnCard);
+                    //player.cards.Add(drawnCard);
                 }
                 else
                 {
@@ -76,6 +76,7 @@ public class NetworkCardManager : NetworkBehaviour
                 }
             }
 
+            GameManager.Instance.SetPlayerCards(id, playerCards);
             SpawnCardsClientRpc(playerCards.ToArray(), RpcTarget.Single(player.id, RpcTargetUse.Temp));
         }
     }

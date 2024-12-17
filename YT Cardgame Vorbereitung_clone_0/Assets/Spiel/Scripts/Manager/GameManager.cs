@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
@@ -94,7 +95,7 @@ public class GameManager : NetworkBehaviour
 
     private void OnClientConnected(ulong clientId)
     {
-        if (!NetworkManager.Singleton.IsServer) return;
+        if (!IsServer) return;
 
         _playerManager.AddNewPlayer(clientId);
     }
@@ -121,6 +122,11 @@ public class GameManager : NetworkBehaviour
 
         // Wirft ein Event, in dem die PlayerUI auf einen Grundzustand gesetzt wird
         _networkPlayerUIManager.HandlePlayerAction(PlayerAction.Initialize, currentPlayerId.Value);
+    }
+
+    public void SetPlayerCards(ulong playerId, List<int> cards)
+    {
+        _playerManager.SetPlayerCards(playerId, cards);
     }
 
     public void PrintPlayerDictionary()
