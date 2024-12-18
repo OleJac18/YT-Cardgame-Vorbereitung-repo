@@ -1,8 +1,11 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using Unity.Netcode;
+using UnityEditor.PackageManager;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public enum PlayerAction
 {
@@ -18,6 +21,10 @@ public class GameManager : NetworkBehaviour
     public NetworkVariable<ulong> currentPlayerId = new NetworkVariable<ulong>();
 
     public static event Action<PlayerManager, ulong> ServFirstCardEvent;
+    public static event Action<int[]> ProcessSelectedCardsEvent;
+    public static event Action<ulong, int> OnUpdateScoreUIEvent;
+    public static event Action RestartGameEvent;
+    public static event Action FlipAllCardsAtGameEndEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
@@ -38,6 +45,8 @@ public class GameManager : NetworkBehaviour
     void Start()
     {
         CardManager.EndTurnEvent += EndTurn;
+        ButtonController.EndGameStartedEvent += OnGameEndButtonPressedServerRpc;
+        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
     public override void OnNetworkSpawn()
@@ -46,10 +55,9 @@ public class GameManager : NetworkBehaviour
 
         base.OnNetworkSpawn();
 
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        // Muss in der OnNetworkSpawn Function sein, weil es sonst zu Problemen mit der NetworkVariablen currentPlayerId
+        // in der Initialize Function kommt, da diese Variable noch nicht im Netzwerk verfügbar ist, aber schon benutzt wird
         ConnectionManager.AllClientsConnectedAndSceneLoadedEvent += InitializeGame;
-
-        currentPlayerId.Value = 50;             // Der Variablen wird zu Beginn ein Wert zugewiesen, der nie erreicht werden kann, damit man mitbekommt, wenn man das erste Mal den currentPlayer aus TurnManager holt um einen Change in der Variablen mitzubekommen
     }
 
     public override void OnDestroy()
@@ -62,7 +70,8 @@ public class GameManager : NetworkBehaviour
         }
 
         ConnectionManager.AllClientsConnectedAndSceneLoadedEvent -= InitializeGame;
-        CardManager.EndTurnEvent += EndTurn;
+        CardManager.EndTurnEvent -= EndTurn;
+        ButtonController.EndGameStartedEvent -= OnGameEndButtonPressedServerRpc;
     }
 
     private void EndTurn()
@@ -78,14 +87,6 @@ public class GameManager : NetworkBehaviour
 
     private void Update()
     {
-        // Beispiel: Nächster Spieler bei Tastendruck
-        if (IsServer && Input.GetKeyDown(KeyCode.N) && _turnManager != null)
-        {
-            _turnManager.NextTurn();
-            currentPlayerId.Value = _turnManager.GetCurrentPlayer();
-            Debug.Log("currentPlayerId: " + currentPlayerId.Value);
-        }
-
         if (Input.GetKeyDown(KeyCode.P))
         {
             Debug.Log("Ich will etwas ausgeben.");
@@ -108,6 +109,9 @@ public class GameManager : NetworkBehaviour
 
     private void InitializeGame()
     {
+        currentPlayerId.Value = 50;             // Der Variablen wird zu Beginn ein Wert zugewiesen, der nie erreicht werden kann, damit man mitbekommt,
+                                                // wenn man das erste Mal den currentPlayer aus TurnManager holt um einen Change in der Variablen mitzubekommen
+
         _networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
         _networkPlayerUIManager.SetPlayerManager(_playerManager);
 
@@ -124,11 +128,6 @@ public class GameManager : NetworkBehaviour
         _networkPlayerUIManager.HandlePlayerAction(PlayerAction.Initialize, currentPlayerId.Value);
     }
 
-    public void SetPlayerCards(ulong playerId, List<int> cards)
-    {
-        _playerManager.SetPlayerCards(playerId, cards);
-    }
-
     public void PrintPlayerDictionary()
     {
         _playerManager.PrintPlayerDictionary();
@@ -137,8 +136,68 @@ public class GameManager : NetworkBehaviour
 
     ////////////////////////////////////////////////////////////////////////
 
-    public void SetInputField(TMP_InputField inputField)
+    public void SetPlayerCards(ulong clientId, List<int> cards)
     {
-        _nameInputField = inputField;
+        _playerManager.SetPlayerCards(clientId, cards);
+    }
+
+    public void GetPlayerCardsAndProcessSelectedCards(ulong clientId)
+    {
+        List<int> cards = _playerManager.GetPlayerCards(clientId);
+        ProcessSelectedCardsClientRpc(cards.ToArray(), RpcTarget.Single(clientId, RpcTargetUse.Temp));
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    public void ProcessSelectedCardsClientRpc(int[] cards, RpcParams rpcParams = default)
+    {
+        ProcessSelectedCardsEvent?.Invoke(cards);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void OnGameEndButtonPressedServerRpc(ulong clientId)
+    {
+        _turnManager.OnGameEndButtonPressed(clientId);
+        EndTurn();
+    }
+
+    public void EndGame()
+    {
+        _playerManager.CalculatePlayerScores((ulong)_turnManager.gameEndingPlayerId);
+        UpdateScoreForAllPlayer();
+        TriggerFlipAllCardsAtGameEndClientsAndHostRpc();
+
+        StartCoroutine(Restart());
+    }
+
+    private void UpdateScoreForAllPlayer()
+    {
+        Dictionary<ulong, Player> _playerDataDict = _playerManager.GetPlayerDataDict();
+        foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)
+        {
+            ulong id = playerData.Key;
+            Player player = playerData.Value;
+
+            UpdateScoreClientsAndHostRpc(id, player.score);
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void UpdateScoreClientsAndHostRpc(ulong clientId, int score)
+    {
+        OnUpdateScoreUIEvent?.Invoke(clientId, score);
+    }
+
+    private IEnumerator Restart()
+    {
+        yield return new WaitForSeconds(5f);
+
+        // Wechseln Sie die Szene auf dem Server und allen Clients
+        RestartGameEvent?.Invoke();
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void TriggerFlipAllCardsAtGameEndClientsAndHostRpc()
+    {
+        FlipAllCardsAtGameEndEvent?.Invoke();
     }
 }

@@ -4,8 +4,9 @@ using UnityEngine;
 [System.Serializable]
 public class TurnManager
 {
-    [SerializeField] private ulong _currentPlayerId;
-    [SerializeField] private List<ulong> _playerOrder;
+    private ulong _currentPlayerId;
+    private List<ulong> _playerOrder;
+    public ulong? gameEndingPlayerId;
 
     public void SetStartPlayer(PlayerManager playerManager)
     {
@@ -13,6 +14,9 @@ public class TurnManager
         _playerOrder = playerManager.GetConnectedClientIds();
 
         _currentPlayerId = _playerOrder[0]; // Der erste Spieler wird als Startspieler festgelegt
+        gameEndingPlayerId = null;
+
+        Debug.Log("GameEndingPlayerId: " + gameEndingPlayerId);
     }
 
     public ulong GetCurrentPlayer()
@@ -33,5 +37,20 @@ public class TurnManager
         _currentPlayerId = _playerOrder[nextIndex];
 
         Debug.Log($"Nächster Spieler: {_currentPlayerId}");
+
+        if (gameEndingPlayerId == _currentPlayerId)
+        {
+            Debug.Log("!!! DAS SPIEL IST BEENDET!!!");
+            GameManager.Instance.EndGame();
+        }
+    }
+
+    public void OnGameEndButtonPressed(ulong clientId)
+    {
+        Debug.Log("!!! Das Ende des Spiels wurde eingeläutet !!!");
+        if (gameEndingPlayerId == null)
+        {
+            gameEndingPlayerId = clientId;
+        }
     }
 }

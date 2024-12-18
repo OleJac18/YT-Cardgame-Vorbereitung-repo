@@ -23,12 +23,14 @@ public class PlayerUIController : MonoBehaviour
     {
         PlayerUIManager.InitializePlayerUIEvent += Initialize;
         PlayerUIManager.UpdatePlayerUIEvent += SetActivePlayer;
+        GameManager.OnUpdateScoreUIEvent += UpdateScore;
     }
 
     private void OnDestroy()
     {
         PlayerUIManager.InitializePlayerUIEvent -= Initialize;
         PlayerUIManager.UpdatePlayerUIEvent -= SetActivePlayer;
+        GameManager.OnUpdateScoreUIEvent -= UpdateScore;
     }
 
     private void Initialize(PlayerNr playerNr, Player player, bool isCurrentPlayer)
@@ -44,6 +46,13 @@ public class PlayerUIController : MonoBehaviour
 
     public void UpdateScore(int score)
     {
+        playerScoreText.text = $"Score: {score}";
+    }
+
+    public void UpdateScore(ulong clientId, int score)
+    {
+        if (clientId != _localPlayerId) return;
+
         playerScoreText.text = $"Score: {score}";
     }
 

@@ -7,22 +7,36 @@ public class ButtonController : MonoBehaviour
 {
     public static event Action DiscardCardEvent;
     public static event Action ExchangeCardEvent;
+    public static event Action<ulong> EndGameStartedEvent;
 
     public Button discardButton;
     public Button exchangeButton;
+    public Button endGameButton;
 
     // Start is called before the first frame update
     void Start()
     {
         discardButton.gameObject.SetActive(false);
         exchangeButton.gameObject.SetActive(false);
+        endGameButton.gameObject.SetActive(false);
 
         CardManager.ShowButtonsEvent += ShowPlayerButton;
+        NetworkCardManager.HidePlayerButtonEvent += HidePlayerButton;
+        GameManager.Instance.currentPlayerId.OnValueChanged += ShowEndGameButton;
     }
+
 
     public void OnDestroy()
     {
         CardManager.ShowButtonsEvent -= ShowPlayerButton;
+        NetworkCardManager.HidePlayerButtonEvent -= HidePlayerButton;
+        GameManager.Instance.currentPlayerId.OnValueChanged -= ShowEndGameButton;
+    }
+
+    private void ShowEndGameButton(ulong previousValue, ulong newValue)
+    {
+        if (NetworkManager.Singleton.LocalClientId != newValue) return;
+        endGameButton.gameObject.SetActive(true);
     }
 
     private void ShowPlayerButton()
@@ -33,10 +47,11 @@ public class ButtonController : MonoBehaviour
         exchangeButton.gameObject.SetActive(true);
     }
 
-    private void HidePlayerButton()
+    public void HidePlayerButton()
     {
         discardButton.gameObject.SetActive(false);
         exchangeButton.gameObject.SetActive(false);
+        endGameButton.gameObject.SetActive(false);
     }
 
     public void DiscardButtonClicked()
@@ -49,7 +64,12 @@ public class ButtonController : MonoBehaviour
     public void ExchangeButtonClicked()
     {
         Debug.Log("Ich möchte die Karte mit einer anderen Karte tauschen.");
-        HidePlayerButton();
         ExchangeCardEvent?.Invoke();
+    }
+
+    public void EndGameButtonClicked()
+    {
+        Debug.Log("Ich möchte das Spiel beenden.");
+        EndGameStartedEvent?.Invoke(NetworkManager.Singleton.LocalClientId);
     }
 }

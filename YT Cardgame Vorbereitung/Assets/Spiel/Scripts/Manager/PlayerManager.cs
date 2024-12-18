@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 public class PlayerManager
@@ -25,6 +27,7 @@ public class PlayerManager
             Player player = playerData.Value;
 
             Debug.Log("ID: " + id + ", Name: " + player.name + ", Level: " + player.score);
+            Debug.Log("Neue Kartenliste im PlayerManager: " + string.Join(", ", player.cards));
         }
     }
 
@@ -44,16 +47,57 @@ public class PlayerManager
         return player.ToArray(); // Konvertiert die Liste in ein Array
     }
 
-    public void SetPlayerCards(ulong playerId, List<int> cards)
+    public List<int> GetPlayerCards(ulong clientId)
+    {
+        return _playerDataDict[clientId].cards;
+    }
+
+    public void SetPlayerCards(ulong clientId, List<int> cards)
     {
         // Statt die Referenz der übergebenen Liste direkt zu verwenden, wird new List<int>(cards) erstellt.
         // Das verhindert unbeabsichtigte Änderungen an der übergebenen Liste, weil List ein Referenztyp ist
-        _playerDataDict[playerId].cards = new List<int>(cards);
+        _playerDataDict[clientId].cards = new List<int>(cards);
 
-        Debug.Log("ID: " + playerId);
-        for (int i = 0; i < _playerDataDict[playerId].cards.Count; i++)
+        Debug.Log("ID: " + clientId);
+        Debug.Log("Neue Kartenliste im PlayerManager: " + string.Join(", ", _playerDataDict[clientId].cards));
+    }
+
+    /// <summary>
+    /// Diese Methode berechnet und aktualisiert den Score eines jeden Spielers
+    /// </summary>
+    public void CalculatePlayerScores(ulong gameEndingPlayerId)
+    {
+        // Finden Sie den Spieler mit der niedrigsten Punktzahl
+        List<Player> playerList = new List<Player>(_playerDataDict.Values);
+        int lowestScore = playerList.Min(player => player.cards.Sum());
+        List<Player> playersWithLowestScore = playerList.Where(player => player.cards.Sum() == lowestScore).ToList();
+
+        // Überprüfen Sie, ob einer der Spieler mit der niedrigsten Punktzahl "Cabo" gerufen hat
+        Player playerWhoCalledCabo = playersWithLowestScore.Find(player => player.id == gameEndingPlayerId);
+
+        // Wenn ein Spieler "Cabo" gerufen hat, erhält nur dieser Spieler keine zusätzlichen Punkte
+        if (playerWhoCalledCabo != null)
         {
-            Debug.Log("Card " + i + ": " + _playerDataDict[playerId].cards[i]);
+            foreach (Player player in playerList)
+            {
+                if (player != playerWhoCalledCabo)
+                {
+                    player.score += player.cards.Sum();
+                }
+            }
         }
+        // Wenn kein Spieler "Cabo" gerufen hat, erhalten alle Spieler mit der niedrigsten Punktzahl keine zusätzlichen Punkte
+        else
+        {
+            foreach (Player player in playerList)
+            {
+                if (!playersWithLowestScore.Contains(player))
+                {
+                    player.score += player.cards.Sum();
+                }
+            }
+        }
+
+        PrintPlayerDictionary();
     }
 }

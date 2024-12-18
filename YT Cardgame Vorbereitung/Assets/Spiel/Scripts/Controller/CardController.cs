@@ -36,11 +36,13 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void Start()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged += SetSelectableState;
+        GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
     }
 
     private void OnDestroy()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged -= SetSelectableState;
+        GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
     }
 
     public int CardNumber
@@ -76,6 +78,11 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void SetCardBackImageVisibility(bool visible)
     {
         cardBackImage.SetActive(visible);
+    }
+
+    public bool GetCardBackImageVisibility()
+    {
+        return cardBackImage.activeSelf;
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -139,6 +146,15 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         });
     }
 
+
+
+    ///////////////////////////////////////////////////////////////////
+
+    public void SetOutline(bool visible)
+    {
+        _outline.enabled = visible;
+    }
+
     private void SetSelectableState(ulong previousPlayerId, ulong currentPlayerId)
     {
         if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
@@ -147,5 +163,13 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         isSelectable = currentPlayerId == localClientId;
         canHover = currentPlayerId == localClientId;
+    }
+
+    private void FlipCardIfNotFlippedAtGameEnd()
+    {
+        if (cardBackImage.activeSelf) // Nur umdrehen, wenn Rückseite sichtbar
+        {
+            FlipCardAnimation(false); // Hier den Parameter für "showCardBack" auf "false" setzen
+        }
     }
 }

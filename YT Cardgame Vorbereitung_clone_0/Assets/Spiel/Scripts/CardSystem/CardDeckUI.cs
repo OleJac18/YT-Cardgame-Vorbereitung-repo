@@ -23,7 +23,6 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
         if (!isSelectable) return;
 
         OnCardDeckClicked?.Invoke();
-        Debug.Log("CardDeck geklickt.");
     }
 
     private void SetSelectableState(ulong previousPlayerId, ulong currentPlayerId)
@@ -31,7 +30,5 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
         ulong localClientId = NetworkManager.Singleton.LocalClientId;
 
         isSelectable = currentPlayerId == localClientId;
-
-        Debug.Log("Meine localClientId ist: " + localClientId + " und der Status von isSelectable im CardDeckUI ist: " + isSelectable);
     }
 }

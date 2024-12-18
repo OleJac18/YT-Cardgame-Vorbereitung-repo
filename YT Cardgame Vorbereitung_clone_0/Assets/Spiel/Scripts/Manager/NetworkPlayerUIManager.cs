@@ -17,6 +17,13 @@ public class NetworkPlayerUIManager : NetworkBehaviour
         GameManager.Instance.currentPlayerId.OnValueChanged += ChangeCurrentPlayer;
     }
 
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+
+        GameManager.Instance.currentPlayerId.OnValueChanged -= ChangeCurrentPlayer;
+    }
+
     public void SetPlayerManager(PlayerManager playerManager)
     {
         _playerManager = playerManager;
