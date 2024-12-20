@@ -40,14 +40,14 @@ public class CardManager : MonoBehaviour
         }
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
-        ButtonController.DiscardCardEvent += MoveDrawnCardToGraveyardPos;
+        ButtonController.DiscardCardEvent += MovePlayerDrawnCardToGraveyardPos;
         CardController.OnCardClickedEvent += SetClickedCard;
     }
 
     private void OnDestroy()
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
-        ButtonController.DiscardCardEvent -= MoveDrawnCardToGraveyardPos;
+        ButtonController.DiscardCardEvent -= MovePlayerDrawnCardToGraveyardPos;
         CardController.OnCardClickedEvent -= SetClickedCard;
     }
 
@@ -64,6 +64,12 @@ public class CardManager : MonoBehaviour
     public bool[] GetClickedCards()
     {
         return _clickedCards;
+    }
+
+    public int GetDrawnCardNumber()
+    {
+        CardController controller = _drawnCard.GetComponent<CardController>();
+        return controller.CardNumber;
     }
 
     public void ServFirstCards(int[] playerCards)
@@ -293,8 +299,19 @@ public class CardManager : MonoBehaviour
     /////////////////////////////////////////////////////////////////////////////
     // Bewegung der DrawnCard zum Graveyard
 
+    public void MovePlayerDrawnCardToGraveyardPos()
+    {
+        CardController controller = _drawnCard.GetComponent<CardController>();
+        MoveDrawnCardToGraveyardPos(controller.CardNumber);
+    }
 
-    public void MoveDrawnCardToGraveyardPos()
+    public void MoveEnemyDrawnCardToGraveyardPos(int cardNumber)
+    {
+        MoveDrawnCardToGraveyardPos(cardNumber);
+    }
+
+
+    public void MoveDrawnCardToGraveyardPos(int cardNumber)
     {
         Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
 
@@ -302,6 +319,13 @@ public class CardManager : MonoBehaviour
         LeanTween.move(_drawnCard, targetPos, 0.5f).setOnComplete(() =>
         {
             _drawnCard.transform.SetParent(_graveyardPos.transform);
+            CardController controller = _drawnCard.GetComponent<CardController>();
+            controller.CardNumber = cardNumber;
+            if (controller.GetCardBackImageVisibility())
+            {
+                controller.FlipCardAnimation(false);
+            }
+
 
             SetCardToGraveyardCard(_drawnCard);
             _drawnCard = null;

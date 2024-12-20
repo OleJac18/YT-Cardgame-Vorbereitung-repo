@@ -23,7 +23,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHoveredEvent += SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        ButtonController.DiscardCardEvent += MoveEnemyCardToGraveyardPosClientRpc;
+        ButtonController.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent += ServFirstCards;
         ButtonController.ExchangeCardEvent += ExchangeButtonClicked;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
@@ -36,7 +36,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHoveredEvent -= SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        ButtonController.DiscardCardEvent -= MoveEnemyCardToGraveyardPosClientRpc;
+        ButtonController.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         ButtonController.ExchangeCardEvent -= ExchangeButtonClicked;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
@@ -88,6 +88,13 @@ public class NetworkCardManager : NetworkBehaviour
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
+    
+
+    private void MoveEnemyCardToGraveyardPos()
+    {
+        int drawnCardNumber = _cardManager.GetDrawnCardNumber();
+        MoveEnemyCardToGraveyardPosClientRpc(drawnCardNumber);
+    }
 
     private void ExchangeButtonClicked()
     {
@@ -117,10 +124,12 @@ public class NetworkCardManager : NetworkBehaviour
         }
         else
         {
+            int drawnCardNumber = _cardManager.GetDrawnCardNumber(); 
+            
             // Legt die gezogene Karte auf den Ablagestapel ab
             _cardManager.ResetOutlinePlayerCards();
-            _cardManager.MoveDrawnCardToGraveyardPos();
-            MoveEnemyCardToGraveyardPosClientRpc();
+            _cardManager.MovePlayerDrawnCardToGraveyardPos();
+            MoveEnemyCardToGraveyardPosClientRpc(drawnCardNumber);
         }
     }
 
@@ -233,10 +242,10 @@ public class NetworkCardManager : NetworkBehaviour
     /// Bewegt die Enemy Karte zum Graveyard bei allen Clients, auﬂer dem Client, der auf die Karte geklickt hat
     /// </summary>
     [Rpc(SendTo.NotMe)]
-    private void MoveEnemyCardToGraveyardPosClientRpc()
+    private void MoveEnemyCardToGraveyardPosClientRpc(int cardNumber)
     {
         _cardManager.ResetOutlineEnemyCards();
-        _cardManager.MoveDrawnCardToGraveyardPos();
+        _cardManager.MoveEnemyDrawnCardToGraveyardPos(cardNumber);
     }
 
     /// <summary>
