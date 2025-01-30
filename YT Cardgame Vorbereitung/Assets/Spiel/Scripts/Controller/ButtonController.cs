@@ -22,6 +22,8 @@ public class ButtonController : MonoBehaviour
 
         CardManager.ShowButtonsEvent += ShowPlayerButton;
         NetworkCardManager.HidePlayerButtonEvent += HidePlayerButton;
+        CardDeckUI.OnCardDeckClicked += HideEndGameButton;
+        CardController.OnGraveyardCardClickedEvent += HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged += ShowEndGameButton;
     }
 
@@ -30,6 +32,8 @@ public class ButtonController : MonoBehaviour
     {
         CardManager.ShowButtonsEvent -= ShowPlayerButton;
         NetworkCardManager.HidePlayerButtonEvent -= HidePlayerButton;
+        CardDeckUI.OnCardDeckClicked -= HideEndGameButton;
+        CardController.OnGraveyardCardClickedEvent -= HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged -= ShowEndGameButton;
     }
 
@@ -37,6 +41,11 @@ public class ButtonController : MonoBehaviour
     {
         if (NetworkManager.Singleton.LocalClientId != newValue) return;
         endGameButton.gameObject.SetActive(true);
+    }
+
+    private void HideEndGameButton()
+    {
+        endGameButton.gameObject.SetActive(false);
     }
 
     private void ShowPlayerButton()

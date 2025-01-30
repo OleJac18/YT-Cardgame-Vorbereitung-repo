@@ -18,6 +18,12 @@ public class PlayerManager
 
     }
 
+    public void DeletePlayerData()
+    {
+        Debug.Log("Alle Spieler-Daten werden gelöscht");
+        _playerDataDict.Clear();
+    }
+
     public void PrintPlayerDictionary()
     {
         foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)

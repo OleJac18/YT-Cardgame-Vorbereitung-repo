@@ -301,6 +301,8 @@ public class CardManager : MonoBehaviour
 
     public void MovePlayerDrawnCardToGraveyardPos()
     {
+        ResetOutlinePlayerCards();
+
         CardController controller = _drawnCard.GetComponent<CardController>();
         MoveDrawnCardToGraveyardPos(controller.CardNumber);
     }

@@ -92,6 +92,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         this.transform.localScale = _hoverScale;
 
+        if (_card.correspondingDeck != Card.Stack.PLAYERCARD) return;
+
         int index = this.transform.GetSiblingIndex();
         OnCardHoveredEvent?.Invoke(_hoverScale, index);
     }
@@ -102,6 +104,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         if (!canHover) return;
 
         this.transform.localScale = _originalScale;
+
+        if (_card.correspondingDeck != Card.Stack.PLAYERCARD) return;
 
         int index = this.transform.GetSiblingIndex();
         OnCardHoveredEvent?.Invoke(_originalScale, index);

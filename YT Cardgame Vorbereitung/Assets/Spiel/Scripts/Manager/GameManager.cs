@@ -45,6 +45,7 @@ public class GameManager : NetworkBehaviour
         CardManager.EndTurnEvent += EndTurn;
         ButtonController.EndGameStartedEvent += OnGameEndButtonPressedServerRpc;
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        ConnectionManager.ServerDisconnectedEvent += DeletePlayerData;
     }
 
     public override void OnNetworkSpawn()
@@ -67,9 +68,18 @@ public class GameManager : NetworkBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         }
 
-        ConnectionManager.AllClientsConnectedAndSceneLoadedEvent -= InitializeGame;
         CardManager.EndTurnEvent -= EndTurn;
         ButtonController.EndGameStartedEvent -= OnGameEndButtonPressedServerRpc;
+        ConnectionManager.ServerDisconnectedEvent -= DeletePlayerData;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        if (!IsServer) return;
+
+        base.OnNetworkDespawn();
+
+        ConnectionManager.AllClientsConnectedAndSceneLoadedEvent -= InitializeGame;
     }
 
     private void EndTurn()
@@ -100,9 +110,9 @@ public class GameManager : NetworkBehaviour
     }
 
 
-    private bool AllClientsConnected()
+    private void DeletePlayerData()
     {
-        return _playerManager.GetConnectedClientIds().Count == 2;
+        _playerManager.DeletePlayerData();
     }
 
     private void InitializeGame()

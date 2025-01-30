@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 public class ConnectionManager : MonoBehaviour
 {
     public static event Action AllClientsConnectedAndSceneLoadedEvent;
+    public static event Action ServerDisconnectedEvent;
 
     private string gameplaySceneName = "Gameplay";
     private int connectedClients = 0;
@@ -48,7 +49,8 @@ public class ConnectionManager : MonoBehaviour
         Debug.Log($"Client {clientId} connected.");
         if (NetworkManager.Singleton.IsServer)
         {
-            connectedClients++;
+            //connectedClients++;
+            connectedClients = NetworkManager.Singleton.ConnectedClients.Count;
             Debug.Log("Connected Clients: " + connectedClients);
 
             if (connectedClients >= requiredClients && NetworkManager.Singleton.IsServer)
@@ -65,7 +67,7 @@ public class ConnectionManager : MonoBehaviour
 
         if (!NetworkManager.Singleton.IsServer)
         {
-            connectedClients--;
+            //connectedClients--;
             SceneManager.LoadScene("MainMenu");
         }
 
@@ -75,6 +77,7 @@ public class ConnectionManager : MonoBehaviour
     {
         Debug.Log("Server stopped");
         SceneManager.LoadScene("MainMenu");
+        ServerDisconnectedEvent?.Invoke();
     }
 
     private void OnSceneEvent(SceneEvent sceneEvent)
