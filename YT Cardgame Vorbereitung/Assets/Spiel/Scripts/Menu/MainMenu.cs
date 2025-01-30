@@ -14,7 +14,7 @@ public class MainMenu : MonoBehaviour
     public void StartHost()
     {
         // Lokale IP-Adresse vom Host
-        ConfigureTransport("10.10.21.43", serverPort);
+        //ConfigureTransport("10.10.21.43", serverPort);
 
         bool success = NetworkManager.Singleton.StartHost();
         Debug.Log("Host gestartet");
@@ -29,7 +29,7 @@ public class MainMenu : MonoBehaviour
     public void StartServer()
     {
         // Lokale IP-Adresse vom Host
-        ConfigureTransport("10.10.21.43", serverPort);
+        //ConfigureTransport("10.10.21.43", serverPort);
 
         bool success = NetworkManager.Singleton.StartServer();
         Debug.Log("Server gestartet");
@@ -42,11 +42,11 @@ public class MainMenu : MonoBehaviour
 
     public void StartClient()
     {
-        string serverIp = ipInputField.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
-        ipAdress = serverIp;
+        //string serverIp = ipInputField.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
+        //ipAdress = serverIp;
 
         // IP-Adresse des Servers konfigurieren
-        ConfigureTransport(serverIp, serverPort);
+        //ConfigureTransport(serverIp, serverPort);
 
         bool success = NetworkManager.Singleton.StartClient();
         Debug.Log("Client gestartet");
