@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -42,6 +43,7 @@ public class CardManager : MonoBehaviour
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
         ButtonController.DiscardCardEvent += MovePlayerDrawnCardToGraveyardPos;
         CardController.OnCardClickedEvent += SetClickedCard;
+        GameManager.UpdateEnemyCardsEvent += UpdateEnemyCardNumbers;
     }
 
     private void OnDestroy()
@@ -49,6 +51,7 @@ public class CardManager : MonoBehaviour
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
         ButtonController.DiscardCardEvent -= MovePlayerDrawnCardToGraveyardPos;
         CardController.OnCardClickedEvent -= SetClickedCard;
+        GameManager.UpdateEnemyCardsEvent -= UpdateEnemyCardNumbers;
     }
 
     public int DrawTopCard()
@@ -304,6 +307,7 @@ public class CardManager : MonoBehaviour
         ResetOutlinePlayerCards();
 
         CardController controller = _drawnCard.GetComponent<CardController>();
+        ResetOutlinePlayerCards();
         MoveDrawnCardToGraveyardPos(controller.CardNumber);
     }
 
@@ -518,7 +522,10 @@ public class CardManager : MonoBehaviour
             // Gezogene Karte intern löschen und den Zug beenden
             _drawnCard = null;
             ResetClickedCards();
-            EndTurnEvent?.Invoke();
+            LeanTween.delayedCall(0.6f, () =>
+            {
+                EndTurnEvent?.Invoke();
+            });
         });
     }
 
@@ -548,6 +555,20 @@ public class CardManager : MonoBehaviour
                 CardController controller = card.GetComponent<CardController>();
                 controller.SetOutline(false);
             }
+        }
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////
+    
+    private void UpdateEnemyCardNumbers(int[] cards)
+    {
+        int cardsCount = _spawnCardEnemyPos.transform.childCount;
+        for (int i = 0; i < cardsCount; i++)
+        {
+             GameObject card = _spawnCardEnemyPos.transform.GetChild(i).gameObject;
+             CardController controller = card.GetComponent<CardController>();
+             controller.CardNumber = cards[i];
         }
     }
 }

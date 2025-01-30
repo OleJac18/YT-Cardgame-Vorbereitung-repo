@@ -23,6 +23,7 @@ public class GameManager : NetworkBehaviour
     public static event Action<ulong, int> OnUpdateScoreUIEvent;
     public static event Action RestartGameEvent;
     public static event Action FlipAllCardsAtGameEndEvent;
+    public static event Action<int[]> UpdateEnemyCardsEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
@@ -171,21 +172,21 @@ public class GameManager : NetworkBehaviour
     public void EndGame()
     {
         _playerManager.CalculatePlayerScores((ulong)_turnManager.gameEndingPlayerId);
-        UpdateScoreForAllPlayer();
+        UpdateScoreAndEnemyCardsForAllPlayer();
         TriggerFlipAllCardsAtGameEndClientsAndHostRpc();
 
         StartCoroutine(Restart());
     }
 
-    private void UpdateScoreForAllPlayer()
+    private void UpdateScoreAndEnemyCardsForAllPlayer()
     {
         Dictionary<ulong, Player> _playerDataDict = _playerManager.GetPlayerDataDict();
         foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)
         {
             ulong id = playerData.Key;
             Player player = playerData.Value;
-
             UpdateScoreClientsAndHostRpc(id, player.score);
+            UpdateEnemyCardsClientRpc(player.cards.ToArray(), RpcTarget.Single(id, RpcTargetUse.Temp));
         }
     }
 
@@ -207,5 +208,11 @@ public class GameManager : NetworkBehaviour
     private void TriggerFlipAllCardsAtGameEndClientsAndHostRpc()
     {
         FlipAllCardsAtGameEndEvent?.Invoke();
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    public void UpdateEnemyCardsClientRpc(int[] cards, RpcParams rpcParams = default)
+    {
+        UpdateEnemyCardsEvent?.Invoke(cards);
     }
 }
