@@ -52,6 +52,11 @@ public class PlayerManager
         return player.ToArray(); // Konvertiert die Liste in ein Array
     }
 
+    public int GetPlayerCount()
+    {
+        return _playerDataDict.Count;
+    }
+
     public List<int> GetPlayerCards(ulong clientId)
     {
         return _playerDataDict[clientId].cards;
@@ -70,7 +75,7 @@ public class PlayerManager
     /// <summary>
     /// Diese Methode berechnet und aktualisiert den Score eines jeden Spielers
     /// </summary>
-    public void CalculatePlayerScores(ulong gameEndingPlayerId)
+    public Player CalculatePlayerScores(ulong gameEndingPlayerId)
     {
         // Finden Sie den Spieler mit der niedrigsten Punktzahl
         List<Player> playerList = new List<Player>(_playerDataDict.Values);
@@ -80,7 +85,7 @@ public class PlayerManager
         // Überprüfen Sie, ob einer der Spieler mit der niedrigsten Punktzahl "Cabo" gerufen hat
         Player playerWhoCalledCabo = playersWithLowestScore.Find(player => player.id == gameEndingPlayerId);
 
-        // Wenn ein Spieler "Cabo" gerufen hat, erhält nur dieser Spieler keine zusätzlichen Punkte
+        // Wenn der Spieler "Cabo" gerufen hat, erhält nur dieser Spieler keine zusätzlichen Punkte
         if (playerWhoCalledCabo != null)
         {
             foreach (Player player in playerList)
@@ -91,7 +96,8 @@ public class PlayerManager
                 }
             }
         }
-        // Wenn kein Spieler "Cabo" gerufen hat, erhalten alle Spieler mit der niedrigsten Punktzahl keine zusätzlichen Punkte
+        // Wenn der/die Spieler mit der niedrigsten Punktzahl nicht "Cabo" gesagt hat,
+        // erhalten alle dieser Spieler keine zusätzlichen Punkte
         else
         {
             foreach (Player player in playerList)
@@ -104,5 +110,7 @@ public class PlayerManager
         }
 
         PrintPlayerDictionary();
+
+        return playersWithLowestScore[0];
     }
 }

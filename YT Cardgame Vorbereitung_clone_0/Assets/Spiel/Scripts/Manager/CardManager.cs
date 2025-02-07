@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using Unity.Netcode;
+using UnityEditor.PackageManager;
 using UnityEngine;
+using UnityEngine.SocialPlatforms.Impl;
 
 public class CardManager : MonoBehaviour
 {
@@ -14,6 +16,10 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _showDrawnCardPos;
     [SerializeField] private GameObject _graveyardPos;
     [SerializeField] private GameObject _playerDrawnCardPos;
+
+    //EnmeyPanel
+    [SerializeField] private PlayerUIController _enemyUIController;
+
 
     public static event Action ShowButtonsEvent;
     public static event Action EndTurnEvent;
@@ -560,15 +566,17 @@ public class CardManager : MonoBehaviour
 
 
     ////////////////////////////////////////////////////////////////////////////
-    
-    private void UpdateEnemyCardNumbers(int[] cards)
+
+    private void UpdateEnemyCardNumbers(Player player)
     {
+        if (player.id != _enemyUIController.GetLocalPlayerId()) return;
+
         int cardsCount = _spawnCardEnemyPos.transform.childCount;
         for (int i = 0; i < cardsCount; i++)
         {
-             GameObject card = _spawnCardEnemyPos.transform.GetChild(i).gameObject;
-             CardController controller = card.GetComponent<CardController>();
-             controller.CardNumber = cards[i];
+            GameObject card = _spawnCardEnemyPos.transform.GetChild(i).gameObject;
+            CardController controller = card.GetComponent<CardController>();
+            controller.CardNumber = player.cards[i];
         }
     }
 }

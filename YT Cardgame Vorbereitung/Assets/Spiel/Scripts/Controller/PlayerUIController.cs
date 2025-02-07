@@ -67,4 +67,9 @@ public class PlayerUIController : MonoBehaviour
     {
         activePlayerImage.color = isActive ? Color.green : Color.grey; // Grün für aktiven Spieler
     }
+
+    public ulong GetLocalPlayerId()
+    {
+        return _localPlayerId;
+    }
 }

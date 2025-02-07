@@ -36,13 +36,13 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void Start()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged += SetSelectableState;
-        GameManager.FlipAllCardsAtGameEndEvent += FlipCardIfNotFlippedAtGameEnd;
+        GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
     }
 
     private void OnDestroy()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged -= SetSelectableState;
-        GameManager.FlipAllCardsAtGameEndEvent -= FlipCardIfNotFlippedAtGameEnd;
+        GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
     }
 
     public int CardNumber

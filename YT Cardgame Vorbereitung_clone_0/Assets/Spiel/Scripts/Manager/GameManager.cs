@@ -22,14 +22,17 @@ public class GameManager : NetworkBehaviour
     public static event Action<int[]> ProcessSelectedCardsEvent;
     public static event Action<ulong, int> OnUpdateScoreUIEvent;
     public static event Action RestartGameEvent;
-    public static event Action FlipAllCardsAtGameEndEvent;
-    public static event Action<int[]> UpdateEnemyCardsEvent;
+    public static event Action StartTransitionEvent;
+    public static event Action FlipAllCardsEvent;
+    public static event Action<Player[], Player> UpdateScoreScreenEvent;
+    public static event Action<Player> UpdateEnemyCardsEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
     [SerializeField] private NetworkPlayerUIManager _networkPlayerUIManager;
 
     [SerializeField] private TMP_InputField _nameInputField;
+    [SerializeField] private int readyPlayers;
 
     private void Awake()
     {
@@ -38,6 +41,8 @@ public class GameManager : NetworkBehaviour
 
         _playerManager = new PlayerManager();
         _turnManager = new TurnManager();
+
+        readyPlayers = 0;
     }
 
     // Start is called before the first frame update
@@ -47,6 +52,7 @@ public class GameManager : NetworkBehaviour
         ButtonController.EndGameStartedEvent += OnGameEndButtonPressedServerRpc;
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         ConnectionManager.ServerDisconnectedEvent += DeletePlayerData;
+        ScoreScreenController.OnReadyButtonClickedEvent += OnReadyButtonClickedServerRpc;
     }
 
     public override void OnNetworkSpawn()
@@ -72,6 +78,7 @@ public class GameManager : NetworkBehaviour
         CardManager.EndTurnEvent -= EndTurn;
         ButtonController.EndGameStartedEvent -= OnGameEndButtonPressedServerRpc;
         ConnectionManager.ServerDisconnectedEvent -= DeletePlayerData;
+        ScoreScreenController.OnReadyButtonClickedEvent -= OnReadyButtonClickedServerRpc;
     }
 
     public override void OnNetworkDespawn()
@@ -137,9 +144,24 @@ public class GameManager : NetworkBehaviour
         _networkPlayerUIManager.HandlePlayerAction(PlayerAction.Initialize, currentPlayerId.Value);
     }
 
-    public void PrintPlayerDictionary()
+    private void PrintPlayerDictionary()
     {
         _playerManager.PrintPlayerDictionary();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void OnReadyButtonClickedServerRpc()
+    {
+        readyPlayers++;
+
+        int totalPlayers = _playerManager.GetPlayerCount();
+
+        if (readyPlayers >= totalPlayers)
+        {
+            readyPlayers = 0;
+            StartTransitionClientsAndHostRpc();
+            StartCoroutine(Restart());
+        }
     }
 
 
@@ -171,11 +193,11 @@ public class GameManager : NetworkBehaviour
 
     public void EndGame()
     {
-        _playerManager.CalculatePlayerScores((ulong)_turnManager.gameEndingPlayerId);
-        UpdateScoreAndEnemyCardsForAllPlayer();
-        TriggerFlipAllCardsAtGameEndClientsAndHostRpc();
+        Player[] players = _playerManager.GetAllPlayers();
 
-        StartCoroutine(Restart());
+        Player winningPlayer = _playerManager.CalculatePlayerScores((ulong)_turnManager.gameEndingPlayerId);
+        UpdateScoreAndEnemyCardsForAllPlayer();
+        FlipCardsAndDisplayScoreScreenClientsAndHostRpc(players, winningPlayer);
     }
 
     private void UpdateScoreAndEnemyCardsForAllPlayer()
@@ -183,36 +205,36 @@ public class GameManager : NetworkBehaviour
         Dictionary<ulong, Player> _playerDataDict = _playerManager.GetPlayerDataDict();
         foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)
         {
-            ulong id = playerData.Key;
             Player player = playerData.Value;
-            UpdateScoreClientsAndHostRpc(id, player.score);
-            UpdateEnemyCardsClientRpc(player.cards.ToArray(), RpcTarget.Single(id, RpcTargetUse.Temp));
+            UpdateScoreAndEnemyCardsClientsAndHostRpc(player);
         }
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void UpdateScoreClientsAndHostRpc(ulong clientId, int score)
+    private void UpdateScoreAndEnemyCardsClientsAndHostRpc(Player player)
     {
-        OnUpdateScoreUIEvent?.Invoke(clientId, score);
+        OnUpdateScoreUIEvent?.Invoke(player.id, player.score);
+        UpdateEnemyCardsEvent?.Invoke(player);
     }
 
     private IEnumerator Restart()
     {
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(2f);
 
         // Wechseln Sie die Szene auf dem Server und allen Clients
         RestartGameEvent?.Invoke();
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void TriggerFlipAllCardsAtGameEndClientsAndHostRpc()
+    private void FlipCardsAndDisplayScoreScreenClientsAndHostRpc(Player[] players, Player winningPlayer)
     {
-        FlipAllCardsAtGameEndEvent?.Invoke();
+        FlipAllCardsEvent?.Invoke();
+        UpdateScoreScreenEvent?.Invoke(players, winningPlayer);
     }
 
-    [Rpc(SendTo.SpecifiedInParams)]
-    public void UpdateEnemyCardsClientRpc(int[] cards, RpcParams rpcParams = default)
+    [Rpc(SendTo.ClientsAndHost)]
+    private void StartTransitionClientsAndHostRpc()
     {
-        UpdateEnemyCardsEvent?.Invoke(cards);
+        StartTransitionEvent?.Invoke();
     }
 }
