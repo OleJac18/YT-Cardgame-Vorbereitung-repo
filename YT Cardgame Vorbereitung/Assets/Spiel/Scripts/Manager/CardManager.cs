@@ -1,11 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using Unity.Netcode;
-using UnityEditor.PackageManager;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
 
 public class CardManager : MonoBehaviour
 {
@@ -48,6 +45,7 @@ public class CardManager : MonoBehaviour
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
         ButtonController.DiscardCardEvent += MovePlayerDrawnCardToGraveyardPos;
+        ButtonController.EndGameClickedEvent += ResetOutlinePlayerCards;
         CardController.OnCardClickedEvent += SetClickedCard;
         GameManager.UpdateEnemyCardsEvent += UpdateEnemyCardNumbers;
     }
@@ -56,6 +54,7 @@ public class CardManager : MonoBehaviour
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
         ButtonController.DiscardCardEvent -= MovePlayerDrawnCardToGraveyardPos;
+        ButtonController.EndGameClickedEvent -= ResetOutlinePlayerCards;
         CardController.OnCardClickedEvent -= SetClickedCard;
         GameManager.UpdateEnemyCardsEvent -= UpdateEnemyCardNumbers;
     }
@@ -534,6 +533,7 @@ public class CardManager : MonoBehaviour
             });
         });
     }
+
 
     private void ResetClickedCards()
     {

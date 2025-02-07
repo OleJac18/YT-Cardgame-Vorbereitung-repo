@@ -24,6 +24,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
         ButtonController.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
+        ButtonController.EndGameClickedEvent += ResetOutlineEnemyCardsClientRpc;
         GameManager.ServFirstCardEvent += ServFirstCards;
         ButtonController.ExchangeCardEvent += ExchangeButtonClicked;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
@@ -37,6 +38,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
         ButtonController.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
+        ButtonController.EndGameClickedEvent -= ResetOutlineEnemyCardsClientRpc;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         ButtonController.ExchangeCardEvent -= ExchangeButtonClicked;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
@@ -88,7 +90,7 @@ public class NetworkCardManager : NetworkBehaviour
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    
+
 
     private void MoveEnemyCardToGraveyardPos()
     {
@@ -124,8 +126,8 @@ public class NetworkCardManager : NetworkBehaviour
         }
         else
         {
-            int drawnCardNumber = _cardManager.GetDrawnCardNumber(); 
-            
+            int drawnCardNumber = _cardManager.GetDrawnCardNumber();
+
             // Legt die gezogene Karte auf den Ablagestapel ab
             _cardManager.ResetOutlinePlayerCards();
             _cardManager.MovePlayerDrawnCardToGraveyardPos();
@@ -255,6 +257,12 @@ public class NetworkCardManager : NetworkBehaviour
     private void MoveDrawnCardToEnemyClientRpc(bool[] clickedCards, int[] cards)
     {
         _cardManager.ExchangeEnemyCards(clickedCards, cards);
+    }
+
+    [Rpc(SendTo.NotMe)]
+    private void ResetOutlineEnemyCardsClientRpc()
+    {
+        _cardManager.ResetOutlineEnemyCards();
     }
 
 

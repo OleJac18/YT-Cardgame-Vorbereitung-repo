@@ -8,6 +8,8 @@ public class ButtonController : MonoBehaviour
     public static event Action DiscardCardEvent;
     public static event Action ExchangeCardEvent;
     public static event Action<ulong> EndGameStartedEvent;
+    public static event Action EndGameClickedEvent;
+
 
     public Button discardButton;
     public Button exchangeButton;
@@ -79,6 +81,8 @@ public class ButtonController : MonoBehaviour
     public void EndGameButtonClicked()
     {
         Debug.Log("Ich möchte das Spiel beenden.");
+        HideEndGameButton();
+        EndGameClickedEvent?.Invoke();
         EndGameStartedEvent?.Invoke(NetworkManager.Singleton.LocalClientId);
     }
 }

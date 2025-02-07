@@ -67,4 +67,10 @@ public class MainMenu : MonoBehaviour
             transport.ConnectionData.ServerListenAddress = "0.0.0.0";
         }
     }
+
+    public void QuitGame()
+    {
+        Debug.Log("Quit");
+        Application.Quit();
+    }
 }

@@ -26,6 +26,7 @@ public class GameManager : NetworkBehaviour
     public static event Action FlipAllCardsEvent;
     public static event Action<Player[], Player> UpdateScoreScreenEvent;
     public static event Action<Player> UpdateEnemyCardsEvent;
+    public static event Action<ulong> ShowCaboTextEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
@@ -49,7 +50,7 @@ public class GameManager : NetworkBehaviour
     void Start()
     {
         CardManager.EndTurnEvent += EndTurn;
-        ButtonController.EndGameStartedEvent += OnGameEndButtonPressedServerRpc;
+        ButtonController.EndGameStartedEvent += OnGameEndButtonPressed;
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         ConnectionManager.ServerDisconnectedEvent += DeletePlayerData;
         ScoreScreenController.OnReadyButtonClickedEvent += OnReadyButtonClickedServerRpc;
@@ -76,7 +77,7 @@ public class GameManager : NetworkBehaviour
         }
 
         CardManager.EndTurnEvent -= EndTurn;
-        ButtonController.EndGameStartedEvent -= OnGameEndButtonPressedServerRpc;
+        ButtonController.EndGameStartedEvent -= OnGameEndButtonPressed;
         ConnectionManager.ServerDisconnectedEvent -= DeletePlayerData;
         ScoreScreenController.OnReadyButtonClickedEvent -= OnReadyButtonClickedServerRpc;
     }
@@ -164,6 +165,12 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    private void OnGameEndButtonPressed(ulong clientId)
+    {
+        ShowCaboTextClientAndHostRpc(clientId);
+        EndCurrentTurnAndSavePlayerWhoPressedServerRpc(clientId);
+    }
+
 
     ////////////////////////////////////////////////////////////////////////
 
@@ -184,8 +191,14 @@ public class GameManager : NetworkBehaviour
         ProcessSelectedCardsEvent?.Invoke(cards);
     }
 
+    [Rpc(SendTo.ClientsAndHost)]
+    private void ShowCaboTextClientAndHostRpc(ulong clientId)
+    {
+        ShowCaboTextEvent?.Invoke(clientId);
+    }
+
     [Rpc(SendTo.Server)]
-    private void OnGameEndButtonPressedServerRpc(ulong clientId)
+    private void EndCurrentTurnAndSavePlayerWhoPressedServerRpc(ulong clientId)
     {
         _turnManager.OnGameEndButtonPressed(clientId);
         EndTurn();

@@ -14,16 +14,19 @@ public class PlayerUIController : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI playerNameText;
     [SerializeField] private TextMeshProUGUI playerScoreText;
+    [SerializeField] private TextMeshProUGUI CaboText;
     [SerializeField] private Image activePlayerImage;
     [SerializeField] private PlayerNr _playerNr; // PlayerNr wird im Editor gesetzt
 
     private ulong _localPlayerId;
+    public static bool _wasGameClosedBefore = false;
 
     private void Start()
     {
         PlayerUIManager.InitializePlayerUIEvent += Initialize;
         PlayerUIManager.UpdatePlayerUIEvent += SetActivePlayer;
         GameManager.OnUpdateScoreUIEvent += UpdateScore;
+        GameManager.ShowCaboTextEvent += ShowCaboText;
     }
 
     private void OnDestroy()
@@ -31,6 +34,7 @@ public class PlayerUIController : MonoBehaviour
         PlayerUIManager.InitializePlayerUIEvent -= Initialize;
         PlayerUIManager.UpdatePlayerUIEvent -= SetActivePlayer;
         GameManager.OnUpdateScoreUIEvent -= UpdateScore;
+        GameManager.ShowCaboTextEvent -= ShowCaboText;
     }
 
     private void Initialize(PlayerNr playerNr, Player player, bool isCurrentPlayer)
@@ -71,5 +75,13 @@ public class PlayerUIController : MonoBehaviour
     public ulong GetLocalPlayerId()
     {
         return _localPlayerId;
+    }
+
+    public void ShowCaboText(ulong clientId)
+    {
+        if (clientId != _localPlayerId || _wasGameClosedBefore) return;
+
+        _wasGameClosedBefore = true;
+        CaboText.enabled = true;
     }
 }
