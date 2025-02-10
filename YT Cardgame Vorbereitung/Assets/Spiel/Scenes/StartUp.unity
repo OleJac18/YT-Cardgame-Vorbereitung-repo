@@ -369,7 +369,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6960e84d07fb87f47956e7a81d71c4e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ProtocolType: 0
+  m_ProtocolType: 1
   m_MaxPacketQueueSize: 128
   m_MaxPayloadSize: 6144
   m_HeartbeatTimeoutMS: 500
@@ -483,10 +483,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   currentPlayerId:
     m_InternalValue: 0
-  _turnManager:
-    _currentPlayerId: 0
-    _playerOrder: 
   _networkPlayerUIManager: {fileID: 0}
+  _nameInputField: {fileID: 0}
+  readyPlayers: 0
 --- !u!114 &1777549246
 MonoBehaviour:
   m_ObjectHideFlags: 0

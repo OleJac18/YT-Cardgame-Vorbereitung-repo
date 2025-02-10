@@ -27,6 +27,8 @@ public class PlayerUIController : MonoBehaviour
         PlayerUIManager.UpdatePlayerUIEvent += SetActivePlayer;
         GameManager.OnUpdateScoreUIEvent += UpdateScore;
         GameManager.ShowCaboTextEvent += ShowCaboText;
+
+        _wasGameClosedBefore = false;
     }
 
     private void OnDestroy()
