@@ -23,6 +23,7 @@ public class ConnectionManager : MonoBehaviour
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
         NetworkManager.Singleton.OnServerStopped += OnServerStopped;
+        RelayManager.HostSuccessfullyStartedEvent += SubscribeToSceneEvent;
         MainMenu.HostSuccessfullyStartedEvent += SubscribeToSceneEvent;
         GameManager.RestartGameEvent += RestartGame;
     }
@@ -34,6 +35,7 @@ public class ConnectionManager : MonoBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
             NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
             NetworkManager.Singleton.OnServerStopped -= OnServerStopped;
+            RelayManager.HostSuccessfullyStartedEvent -= SubscribeToSceneEvent;
             MainMenu.HostSuccessfullyStartedEvent -= SubscribeToSceneEvent;
             GameManager.RestartGameEvent -= RestartGame;
         }

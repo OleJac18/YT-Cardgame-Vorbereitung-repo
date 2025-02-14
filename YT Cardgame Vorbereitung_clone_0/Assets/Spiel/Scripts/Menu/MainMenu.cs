@@ -2,49 +2,82 @@ using System;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using Unity.Networking.Transport.Relay;
 using Unity.Services.Authentication;
-using Unity.Services.Core;
-using Unity.Services.Relay;
-using Unity.Services.Relay.Models;
 using UnityEngine;
 
 public class MainMenu : MonoBehaviour
 {
-    public static event Action HostSuccessfullyStartedEvent;
     [SerializeField] private TMP_InputField joinCodeInput; // Eingabefeld für den Code des Servers
     [SerializeField] private TextMeshProUGUI joinCodeText;
+
+    public static event Action HostSuccessfullyStartedEvent;
+
+    [SerializeField] private RelayManager _relayManager;
+    [SerializeField] private bool _useRelay;
 
 
     //[SerializeField] private ushort serverPort = 7777; // Der Standard-Port für den Server
     //public string ipAdress;
 
-    async void Start()
+    private void Start()
     {
-        await UnityServices.InitializeAsync();
+        _useRelay = false;
+    }
 
-        AuthenticationService.Instance.SignedIn += () =>
-        {
-            Debug.Log("Signed in " + AuthenticationService.Instance.PlayerId);
-        };
-        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+    public void SetUseRelay(bool toggleState)
+    {
+        _useRelay = toggleState;
+    }
+
+    public void OnDisconnectButtonPressed()
+    {
+        if (!_useRelay)
+            DisconnectLocal();
+        else
+            DisconnectFromRelay();
+
     }
 
     public void StartHost()
     {
+        if (!_useRelay)
+            StartLocalHost();
+        else
+            StartOnlineHost();
+    }
+
+    private void StartLocalHost()
+    {
         // Lokale IP-Adresse vom Host
         //ConfigureTransport("10.10.21.43", serverPort);
 
-        /*bool success = NetworkManager.Singleton.StartHost();
+        _relayManager.SignOut(); // Spieler abmelden
+
+        // Hol den UnityTransport und konfiguriere ihn ohne Relay
+        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        transport.SetConnectionData("127.0.0.1", 7777);
+
+        bool success = NetworkManager.Singleton.StartHost();
         Debug.Log("Host gestartet");
 
         if (success)
         {
             HostSuccessfullyStartedEvent?.Invoke();
-        }*/
+        }
+    }
 
-        CreateRelay();
+    public async void StartOnlineHost()
+    {
+        bool initialized = await _relayManager.Initialize();
 
+        if (!initialized)
+        {
+            Debug.LogError("StartOnlineHost abgebrochen: Relay konnte nicht initialisiert werden.");
+            return;
+        }
+
+        string joinCode = await _relayManager.CreateRelay();
+        joinCodeText.text = "Join Code: " + joinCode;
     }
 
     public void StartServer()
@@ -57,30 +90,73 @@ public class MainMenu : MonoBehaviour
 
         if (success)
         {
-            HostSuccessfullyStartedEvent?.Invoke();
+            //HostSuccessfullyStartedEvent?.Invoke();
         }
     }
 
     public void StartClient()
     {
-        //string serverIp = ipInputField.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
-        //ipAdress = serverIp;
+        
 
-        // IP-Adresse des Servers konfigurieren
-        //ConfigureTransport(serverIp, serverPort);
-
-        /*bool success = NetworkManager.Singleton.StartClient();
-        Debug.Log("Client gestartet");
-
-        if (success)
+        if (!_useRelay)
         {
-            HostSuccessfullyStartedEvent?.Invoke();
-        }*/
+            //string serverIp = ipInputField.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
+            //ipAdress = serverIp;
 
+            // IP-Adresse des Servers konfigurieren
+            //ConfigureTransport(serverIp, serverPort);
 
-        string code = joinCodeInput.text;
-        JoinRelay(code);
+            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+            transport.SetConnectionData("127.0.0.1", 7777);
+
+            bool success = NetworkManager.Singleton.StartClient();
+            Debug.Log("Client gestartet");
+
+            if (success)
+            {
+                HostSuccessfullyStartedEvent?.Invoke();
+            }
+        }
+        else
+        {
+            string code = joinCodeInput.text;
+            _relayManager.JoinRelay(code);
+        }
     }
+
+    public void DisconnectLocal()
+    {
+        if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)
+        {
+            Debug.Log("Host/Server wird heruntergefahren...");
+        }
+        else if (NetworkManager.Singleton.IsClient)
+        {
+            Debug.Log("Client trennt Verbindung...");
+        }
+
+        NetworkManager.Singleton.Shutdown(); // Beende das Netzwerk
+    }
+
+    public void DisconnectFromRelay()
+    {
+        if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)
+        {
+            Debug.Log("Host/Server wird heruntergefahren...");
+        }
+        else if (NetworkManager.Singleton.IsClient)
+        {
+            Debug.Log("Client trennt Verbindung...");
+        }
+
+        NetworkManager.Singleton.Shutdown(); // Beende das Netzwerk
+
+        _relayManager.SignOut(); // Spieler abmelden
+
+        Debug.Log("Netzwerk wurde beendet.");
+    }
+
+
 
     /*private void ConfigureTransport(string ip, ushort port)
     {
@@ -97,55 +173,5 @@ public class MainMenu : MonoBehaviour
     {
         Debug.Log("Quit");
         Application.Quit();
-    }
-
-    ////////////////////////////////////////////////////////////////////////
-    private async void CreateRelay()
-    {
-        try
-        {
-            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(3);
-
-            // der Joincode ist der Code, den man den Freunden schicken kann, damit sie sich mit dem selben Relay verbinden können
-            string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
-            Debug.Log("Relay Join Code: " + joinCode);
-
-            RelayServerData relayServerData = new RelayServerData(allocation, "dtls");
-
-            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
-
-            bool success = NetworkManager.Singleton.StartHost();
-            Debug.Log("Host gestartet");
-
-            if (success)
-            {
-                HostSuccessfullyStartedEvent?.Invoke();
-            }
-
-            joinCodeText.text = "Join Code: " + joinCode;
-        }
-        catch (RelayServiceException e)
-        {
-            Debug.LogError("Relay error: " + e.Message);
-        }
-    }
-
-    public async void JoinRelay(string joinCode)
-    {
-        try
-        {
-            Debug.Log("Joining Relay with " + joinCode);
-            JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
-
-            RelayServerData relayServerData = new RelayServerData(joinAllocation, "dtls");
-
-            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
-
-            NetworkManager.Singleton.StartClient();
-        }
-        catch (RelayServiceException e)
-        {
-            Debug.LogError("Relay join error: " + e.Message);
-        }
     }
 }
