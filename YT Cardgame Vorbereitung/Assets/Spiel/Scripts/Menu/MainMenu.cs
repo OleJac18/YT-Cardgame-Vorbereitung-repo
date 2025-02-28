@@ -3,7 +3,6 @@ using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class MainMenu : MonoBehaviour
 {
@@ -17,10 +16,17 @@ public class MainMenu : MonoBehaviour
     [SerializeField] private TMP_InputField OfflineJoinGameIPInput; // Eingabefeld für die IP Adresse zum Joinen
     [SerializeField] private TMP_InputField OfflineJoinGamePortInput; // Eingabefeld für die Port Adresse zum Joinen
 
+    [Header("Online Input")]
+    [SerializeField] private TMP_InputField OnlineJoinCodeOutput; // Ausgabe des erstellten Joincodes
+
+    [SerializeField] private TMP_InputField OnlineJoinCodeInput; // Eingabefeld für die Joincode zum Joinen
+
     public static event Action HostSuccessfullyStartedEvent;
 
     [SerializeField] private RelayManager _relayManager;
     [SerializeField] private bool _useRelay;
+
+    private bool initialized;
 
 
     //[SerializeField] private ushort serverPort = 7777; // Der Standard-Port für den Server
@@ -28,7 +34,8 @@ public class MainMenu : MonoBehaviour
 
     private void Start()
     {
-        _useRelay = false;
+        initialized = false;
+        _useRelay   = false;
     }
 
     public void SetUseRelay(bool toggleState)
@@ -93,20 +100,6 @@ public class MainMenu : MonoBehaviour
         }
     }
 
-    public async void StartOnlineHost()
-    {
-        bool initialized = await _relayManager.Initialize();
-
-        if (!initialized)
-        {
-            Debug.LogError("StartOnlineHost abgebrochen: Relay konnte nicht initialisiert werden.");
-            return;
-        }
-
-        string joinCode = await _relayManager.CreateRelay();
-        joinCodeText.text = "Join Code: " + joinCode;
-    }
-
     public void StartServer()
     {
         // Lokale IP-Adresse vom Host
@@ -145,38 +138,38 @@ public class MainMenu : MonoBehaviour
         }
     }
 
-    public void StartClient()
+    public async void StartOnlineHost()
     {
-        
-
-        if (!_useRelay)
+        if (!initialized)
         {
-            //string serverIp = ipInputField.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
-            //ipAdress = serverIp;
+            initialized = await _relayManager.Initialize();
 
-            // IP-Adresse des Servers konfigurieren
-            //ConfigureTransport(serverIp, serverPort);
-
-            if (ConvertInputToInt(OfflineJoinGamePortInput.text) == null) return;
-
-            ushort port = (ushort)ConvertInputToInt(OfflineJoinGamePortInput.text);
-
-            var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-            transport.SetConnectionData(OfflineJoinGameIPInput.text, port);
-
-            bool success = NetworkManager.Singleton.StartClient();
-            Debug.Log("Client gestartet");
-
-            if (success)
+            if (!initialized)
             {
-                HostSuccessfullyStartedEvent?.Invoke();
+                Debug.LogError("StartOnlineHost abgebrochen: Relay konnte nicht initialisiert werden.");
+                return;
+            }
+        }        
+
+        string joinCode = await _relayManager.CreateRelay();
+        OnlineJoinCodeOutput.text = joinCode;
+    }
+
+    public async void StartOnlineClient()
+    {
+        if (!initialized)
+        {
+            initialized = await _relayManager.Initialize();
+
+            if (!initialized)
+            {
+                Debug.LogError("StartOnlineClient abgebrochen: Relay konnte nicht initialisiert werden.");
+                return;
             }
         }
-        else
-        {
-            string code = joinCodeInput.text;
-            _relayManager.JoinRelay(code);
-        }
+
+        string code = OnlineJoinCodeInput.text;
+        _relayManager.JoinRelay(code);
     }
 
     public void DisconnectLocal()

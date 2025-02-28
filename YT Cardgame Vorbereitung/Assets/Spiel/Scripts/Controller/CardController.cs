@@ -25,12 +25,22 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private Vector3 _originalScale;
     private Vector3 _hoverScale;
 
+    private static int _flippedCardCount;
+    public int FlippedCardCount;
+    [SerializeField] private bool isFlipped = false;  // Lokale Variable, die den Status speichert
+
+    private void Update()
+    {
+        FlippedCardCount = _flippedCardCount;
+    }
+
     private void Awake()
     {
         _outline = this.GetComponent<Outline>();
         _originalScale = Vector3.one;
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
         _card = new Card(13, Card.Stack.NONE);
+        _flippedCardCount = 0;
     }
 
     private void Start()
@@ -113,7 +123,6 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // Wenn nicht gehovert werden darf, return
         if (!isSelectable) return;
 
         if (_card.correspondingDeck == Card.Stack.GRAVEYARD)
@@ -122,8 +131,19 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
         else
         {
-            SelectionAnimation();
-            //FlipCardAnimation(!cardBackImage.activeSelf);
+
+            if (_flippedCardCount < 2 && !isFlipped) 
+            {
+                Debug.Log("Die Karte ist noch nicht umgedreht.");
+                FlipCardAnimation(isFlipped);
+                _flippedCardCount++;
+                isFlipped = true;
+            } else if (isFlipped)
+            {
+                Debug.Log("Die Karte ist bereits umgedreht.");
+                FlipCardAnimation(isFlipped);
+                isFlipped = false;
+            }
         }
     }
 
