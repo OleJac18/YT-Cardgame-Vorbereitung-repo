@@ -18,12 +18,14 @@ public class CardManager : MonoBehaviour
     [SerializeField] private PlayerUIController _enemyUIController;
 
 
-    public static event Action ShowButtonsEvent;
+    public static event Action ShowDiscardAndExchangeButtonEvent;
+    public static event Action ShowActionsButtonEvent;
     public static event Action EndTurnEvent;
     public static event Action AllCardsAreFlippedBackEvent;
 
     public static int flippedCardCount;
     public int FlippedCardCount;
+    public static bool allCardsAreFlippedBack;
 
 
     public int topCardNumber = -1;
@@ -44,7 +46,9 @@ public class CardManager : MonoBehaviour
         _clickedCards = new bool[4];
         _flippedCards = new bool[4];
 
+        // Für den Start, wenn ein Spieler sich zwei seiner Karten angucken darf
         flippedCardCount = 0;
+        allCardsAreFlippedBack = false;
 
         if (NetworkManager.Singleton.IsServer)
         {
@@ -306,7 +310,14 @@ public class CardManager : MonoBehaviour
         // Guckt, ob die Buttons zum Abwerfen oder Tauschen angezeigt werden sollen
         if (showButton)
         {
-            ShowButtonsEvent?.Invoke();
+            ShowDiscardAndExchangeButtonEvent?.Invoke();
+
+            // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
+            // Aktion ausgeführt werden kann
+            if (controllerDrawnCard.CardNumber > 6 && controllerDrawnCard.CardNumber < 9)
+            {
+                ShowActionsButtonEvent?.Invoke();
+            }
         }
     }
 
@@ -621,6 +632,8 @@ public class CardManager : MonoBehaviour
 
         if (!hasFlippedCards && flippedCardCount == 2)
         {
+            // Speichert, dass alle Karten angeguckt und wieder umgedreht worden sind
+            allCardsAreFlippedBack = true;
 
             AllCardsAreFlippedBackEvent?.Invoke();
         }
@@ -630,4 +643,13 @@ public class CardManager : MonoBehaviour
     {
         _flippedCards[index] = isFlipped;
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    public void ReduceFlippedCardCount()
+    {
+        flippedCardCount--;
+        allCardsAreFlippedBack = false;
+    }
+
 }

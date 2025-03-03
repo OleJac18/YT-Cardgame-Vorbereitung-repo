@@ -28,7 +28,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private Vector3 _hoverScale;
 
     private bool _isFlipped;
-    [SerializeField] private bool _allCardsAreFlippedBack;
+    [SerializeField] 
 
     private void Awake()
     {
@@ -37,19 +37,18 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
         _card = new Card(13, Card.Stack.NONE);
         _isFlipped = false;
-        _allCardsAreFlippedBack = false;
     }
 
     private void Start()
     {
-        GameManager.Instance.currentPlayerId.OnValueChanged += SetSelectableState;
+        GameManager.Instance.currentPlayerId.OnValueChanged += SetInteractableState;
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
     }
 
     private void OnDestroy()
     {
-        GameManager.Instance.currentPlayerId.OnValueChanged -= SetSelectableState;
+        GameManager.Instance.currentPlayerId.OnValueChanged -= SetInteractableState;
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
     }
@@ -153,7 +152,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
                 // hin umgedreht oder selektiert werden können
                 int index = this.transform.GetSiblingIndex();
                 OnCardFlippedBackEvent?.Invoke(CardManager.flippedCardCount,false, index);
-            } else if (CardManager.flippedCardCount == 2 && _allCardsAreFlippedBack)
+            } else if (CardManager.flippedCardCount == 2 && CardManager.allCardsAreFlippedBack)
             {
                 SelectionAnimation();
             }
@@ -162,13 +161,10 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     private void SetAllCardsAreFlippedBack()
     {
-        // Speichert, dass alle Karten angeguckt und wieder umgedreht worden sind
-        _allCardsAreFlippedBack = true;
-
         // Setzt den Selectable State der Karte, je nachdem ob der Spieler am Zug ist
         // oder nicht
         ulong currentPlayerId = GameManager.Instance.currentPlayerId.Value;
-        SetSelectableState(currentPlayerId, currentPlayerId);
+        SetInteractableState(currentPlayerId, currentPlayerId);
 
         SetHoverState(_originalScale);
     }
@@ -205,7 +201,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _outline.enabled = visible;
     }
 
-    private void SetSelectableState(ulong previousPlayerId, ulong currentPlayerId)
+    private void SetInteractableState(ulong previousPlayerId, ulong currentPlayerId)
     {
         if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
 
@@ -213,6 +209,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         isSelectable = currentPlayerId == localClientId;
         canHover = currentPlayerId == localClientId;
+
+        SetHoverState(_originalScale);
     }
 
     private void FlipCardIfNotFlippedAtGameEnd()

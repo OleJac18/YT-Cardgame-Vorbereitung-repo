@@ -13,6 +13,7 @@ public class ButtonController : MonoBehaviour
 
     public Button discardButton;
     public Button exchangeButton;
+    public Button actionsButton;
     public Button endGameButton;
 
     // Start is called before the first frame update
@@ -20,23 +21,26 @@ public class ButtonController : MonoBehaviour
     {
         discardButton.gameObject.SetActive(false);
         exchangeButton.gameObject.SetActive(false);
+        actionsButton.gameObject.SetActive(false);
         endGameButton.gameObject.SetActive(false);
 
-        CardManager.ShowButtonsEvent += ShowPlayerButton;
+        CardManager.ShowDiscardAndExchangeButtonEvent += ShowDiscardAndExchangeButton;
         NetworkCardManager.HidePlayerButtonEvent += HidePlayerButton;
         CardDeckUI.OnCardDeckClicked += HideEndGameButton;
         CardController.OnGraveyardCardClickedEvent += HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged += ShowEndGameButton;
+        CardManager.ShowActionsButtonEvent += ShowActionsButton;
     }
 
 
     public void OnDestroy()
     {
-        CardManager.ShowButtonsEvent -= ShowPlayerButton;
+        CardManager.ShowDiscardAndExchangeButtonEvent -= ShowDiscardAndExchangeButton;
         NetworkCardManager.HidePlayerButtonEvent -= HidePlayerButton;
         CardDeckUI.OnCardDeckClicked -= HideEndGameButton;
         CardController.OnGraveyardCardClickedEvent -= HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged -= ShowEndGameButton;
+        CardManager.ShowActionsButtonEvent -= ShowActionsButton;
     }
 
     private void ShowEndGameButton(ulong previousValue, ulong newValue)
@@ -50,7 +54,7 @@ public class ButtonController : MonoBehaviour
         endGameButton.gameObject.SetActive(false);
     }
 
-    private void ShowPlayerButton()
+    private void ShowDiscardAndExchangeButton()
     {
         if (NetworkManager.Singleton.LocalClientId != GameManager.Instance.currentPlayerId.Value) return;
 
@@ -58,10 +62,22 @@ public class ButtonController : MonoBehaviour
         exchangeButton.gameObject.SetActive(true);
     }
 
+    public void HideDiscardAndExchangeButton()
+    {
+        discardButton.gameObject.SetActive(false);
+        exchangeButton.gameObject.SetActive(false);
+    }
+
+    private void ShowActionsButton()
+    {
+        actionsButton.gameObject.SetActive(true);
+    }
+
     public void HidePlayerButton()
     {
         discardButton.gameObject.SetActive(false);
         exchangeButton.gameObject.SetActive(false);
+        actionsButton.gameObject.SetActive(false);
         endGameButton.gameObject.SetActive(false);
     }
 
