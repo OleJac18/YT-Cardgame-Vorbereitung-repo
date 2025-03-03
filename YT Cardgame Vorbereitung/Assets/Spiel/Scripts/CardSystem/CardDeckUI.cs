@@ -22,6 +22,8 @@ public class CardDeckUI : MonoBehaviour, IPointerClickHandler
     {
         if (!isSelectable) return;
 
+        isSelectable = false;
+
         OnCardDeckClicked?.Invoke();
     }
 

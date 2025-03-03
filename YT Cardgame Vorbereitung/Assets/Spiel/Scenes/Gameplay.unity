@@ -1972,7 +1972,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1038717780
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4625,6 +4625,7 @@ MonoBehaviour:
   _graveyardPos: {fileID: 777651146}
   _playerDrawnCardPos: {fileID: 817427805}
   _enemyUIController: {fileID: 713534883}
+  FlippedCardCount: 0
   topCardNumber: -1
   _cardStack:
     stack: []
@@ -4632,6 +4633,7 @@ MonoBehaviour:
   _graveyardCard: {fileID: 0}
   _drawnCard: {fileID: 0}
   _clickedCards: 
+  _flippedCards: 
 --- !u!4 &1935967951
 Transform:
   m_ObjectHideFlags: 0

@@ -15,6 +15,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public static event Action<Vector3, int> OnCardHoveredEvent;
     public static event Action<bool, int> OnCardClickedEvent;
     public static event Action OnGraveyardCardClickedEvent;
+    public static event Action<bool, int> OnCardFlippedEvent;
+    public static event Action<int, bool, int> OnCardFlippedBackEvent;
 
     public bool canHover = false;
     public bool isSelectable = false;
@@ -25,14 +27,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private Vector3 _originalScale;
     private Vector3 _hoverScale;
 
-    private static int _flippedCardCount;
-    public int FlippedCardCount;
-    [SerializeField] private bool isFlipped = false;  // Lokale Variable, die den Status speichert
-
-    private void Update()
-    {
-        FlippedCardCount = _flippedCardCount;
-    }
+    private bool _isFlipped;
+    [SerializeField] private bool _allCardsAreFlippedBack;
 
     private void Awake()
     {
@@ -40,19 +36,22 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _originalScale = Vector3.one;
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
         _card = new Card(13, Card.Stack.NONE);
-        _flippedCardCount = 0;
+        _isFlipped = false;
+        _allCardsAreFlippedBack = false;
     }
 
     private void Start()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged += SetSelectableState;
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
+        CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
     }
 
     private void OnDestroy()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged -= SetSelectableState;
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
+        CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
     }
 
     public int CardNumber
@@ -100,12 +99,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         // Wenn nicht gehovert werden darf, return
         if (!canHover) return;
 
-        this.transform.localScale = _hoverScale;
-
-        if (_card.correspondingDeck != Card.Stack.PLAYERCARD) return;
-
-        int index = this.transform.GetSiblingIndex();
-        OnCardHoveredEvent?.Invoke(_hoverScale, index);
+        SetHoverState(_hoverScale);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -113,12 +107,17 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         // Wenn nicht gehovert werden darf, return
         if (!canHover) return;
 
-        this.transform.localScale = _originalScale;
+        SetHoverState(_originalScale);
+    }
+
+    private void SetHoverState(Vector3 scale)
+    {
+        this.transform.localScale = scale;
 
         if (_card.correspondingDeck != Card.Stack.PLAYERCARD) return;
 
         int index = this.transform.GetSiblingIndex();
-        OnCardHoveredEvent?.Invoke(_originalScale, index);
+        OnCardHoveredEvent?.Invoke(scale, index);
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -131,20 +130,47 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
         else
         {
-
-            if (_flippedCardCount < 2 && !isFlipped) 
+            if (CardManager.flippedCardCount < 2 && !_isFlipped) 
             {
                 Debug.Log("Die Karte ist noch nicht umgedreht.");
-                FlipCardAnimation(isFlipped);
-                _flippedCardCount++;
-                isFlipped = true;
-            } else if (isFlipped)
+                FlipCardAnimation(_isFlipped);
+                CardManager.flippedCardCount++;
+                _isFlipped = true;
+
+                // Speichert im CardManager ab, welche Karten umgedreht worden sind
+                // Damit vom CardManager angegeben werden kann, ob die Karten weiter
+                // hin umgedreht oder selektiert werden können
+                int index = this.transform.GetSiblingIndex();
+                OnCardFlippedEvent?.Invoke(true, index);
+            } else if (_isFlipped)
             {
                 Debug.Log("Die Karte ist bereits umgedreht.");
-                FlipCardAnimation(isFlipped);
-                isFlipped = false;
+                FlipCardAnimation(_isFlipped);
+                _isFlipped = false;
+
+                // Speichert im CardManager ab, welche Karten umgedreht worden sind
+                // Damit vom CardManager angegeben werden kann, ob die Karten weiter
+                // hin umgedreht oder selektiert werden können
+                int index = this.transform.GetSiblingIndex();
+                OnCardFlippedBackEvent?.Invoke(CardManager.flippedCardCount,false, index);
+            } else if (CardManager.flippedCardCount == 2 && _allCardsAreFlippedBack)
+            {
+                SelectionAnimation();
             }
         }
+    }
+
+    private void SetAllCardsAreFlippedBack()
+    {
+        // Speichert, dass alle Karten angeguckt und wieder umgedreht worden sind
+        _allCardsAreFlippedBack = true;
+
+        // Setzt den Selectable State der Karte, je nachdem ob der Spieler am Zug ist
+        // oder nicht
+        ulong currentPlayerId = GameManager.Instance.currentPlayerId.Value;
+        SetSelectableState(currentPlayerId, currentPlayerId);
+
+        SetHoverState(_originalScale);
     }
 
     private void SelectionAnimation()

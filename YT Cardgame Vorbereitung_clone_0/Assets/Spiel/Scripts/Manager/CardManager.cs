@@ -20,6 +20,11 @@ public class CardManager : MonoBehaviour
 
     public static event Action ShowButtonsEvent;
     public static event Action EndTurnEvent;
+    public static event Action AllCardsAreFlippedBackEvent;
+
+    public static int flippedCardCount;
+    public int FlippedCardCount;
+
 
     public int topCardNumber = -1;
 
@@ -30,11 +35,16 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _drawnCard;
 
     [SerializeField] private bool[] _clickedCards;
+    [SerializeField] private bool[] _flippedCards;
+
 
     // Start is called before the first frame update
     void Start()
     {
         _clickedCards = new bool[4];
+        _flippedCards = new bool[4];
+
+        flippedCardCount = 0;
 
         if (NetworkManager.Singleton.IsServer)
         {
@@ -47,7 +57,10 @@ public class CardManager : MonoBehaviour
         ButtonController.DiscardCardEvent += MovePlayerDrawnCardToGraveyardPos;
         ButtonController.EndGameClickedEvent += ResetOutlinePlayerCards;
         CardController.OnCardClickedEvent += SetClickedCard;
+        CardController.OnCardFlippedEvent += SetFlippedCard;
+        CardController.OnCardFlippedBackEvent += CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent += UpdateEnemyCardNumbers;
+
     }
 
     private void OnDestroy()
@@ -56,7 +69,14 @@ public class CardManager : MonoBehaviour
         ButtonController.DiscardCardEvent -= MovePlayerDrawnCardToGraveyardPos;
         ButtonController.EndGameClickedEvent -= ResetOutlinePlayerCards;
         CardController.OnCardClickedEvent -= SetClickedCard;
+        CardController.OnCardFlippedEvent -= SetFlippedCard;
+        CardController.OnCardFlippedBackEvent -= CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent -= UpdateEnemyCardNumbers;
+    }
+
+    private void Update()
+    {
+        FlippedCardCount = CardManager.flippedCardCount;
     }
 
     public int DrawTopCard()
@@ -578,5 +598,36 @@ public class CardManager : MonoBehaviour
             CardController controller = card.GetComponent<CardController>();
             controller.CardNumber = player.cards[i];
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    
+    private void CardFlippedBack(int flippedCardCount, bool isFlipped, int index)
+    {
+        SetFlippedCard(isFlipped, index);
+        CheckIfAllCardsAreFlippedBack(flippedCardCount);
+    }
+
+    private void CheckIfAllCardsAreFlippedBack(int flippedCardCount)
+    {
+        bool hasFlippedCards = false;
+        foreach (var card in _flippedCards)
+        {
+            if (card)
+            {
+                hasFlippedCards = true;
+            }
+        }
+
+        if (!hasFlippedCards && flippedCardCount == 2)
+        {
+
+            AllCardsAreFlippedBackEvent?.Invoke();
+        }
+    }
+
+    private void SetFlippedCard(bool isFlipped, int index)
+    {
+        _flippedCards[index] = isFlipped;
     }
 }
