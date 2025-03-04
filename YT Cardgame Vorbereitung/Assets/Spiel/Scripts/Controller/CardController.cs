@@ -196,9 +196,17 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     ///////////////////////////////////////////////////////////////////
 
-    public void SetOutline(bool visible)
+    public void SetOutlineForLocalPlayer(bool visible)
     {
         _outline.enabled = visible;
+    }
+
+    public void SetOutlineForAllPlayers(bool visible)
+    {
+        _outline.enabled = visible;
+
+        int index = this.transform.GetSiblingIndex();
+        OnCardClickedEvent?.Invoke(visible, index);
     }
 
     private void SetInteractableState(ulong previousPlayerId, ulong currentPlayerId)

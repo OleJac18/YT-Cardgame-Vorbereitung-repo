@@ -30,6 +30,7 @@ public class ButtonController : MonoBehaviour
         CardController.OnGraveyardCardClickedEvent += HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged += ShowEndGameButton;
         CardManager.ShowActionsButtonEvent += ShowActionsButton;
+        CardManager.HideDiscardAndExchangeButtonEvent += HideDiscardAndExchangeButton;
     }
 
 
@@ -41,6 +42,7 @@ public class ButtonController : MonoBehaviour
         CardController.OnGraveyardCardClickedEvent -= HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged -= ShowEndGameButton;
         CardManager.ShowActionsButtonEvent -= ShowActionsButton;
+        CardManager.HideDiscardAndExchangeButtonEvent -= HideDiscardAndExchangeButton;
     }
 
     private void ShowEndGameButton(ulong previousValue, ulong newValue)

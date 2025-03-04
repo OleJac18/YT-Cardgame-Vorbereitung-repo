@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
+using UnityEditor;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 public class CardManager : MonoBehaviour
 {
@@ -20,6 +22,7 @@ public class CardManager : MonoBehaviour
 
     public static event Action ShowDiscardAndExchangeButtonEvent;
     public static event Action ShowActionsButtonEvent;
+    public static event Action HideDiscardAndExchangeButtonEvent;
     public static event Action EndTurnEvent;
     public static event Action AllCardsAreFlippedBackEvent;
 
@@ -144,7 +147,7 @@ public class CardManager : MonoBehaviour
     {
         GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
         CardController controller = card.GetComponent<CardController>();
-        controller.SetOutline(isSelected);
+        controller.SetOutlineForLocalPlayer(isSelected);
     }
 
     /// <summary>
@@ -314,7 +317,7 @@ public class CardManager : MonoBehaviour
 
             // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
             // Aktion ausgeführt werden kann
-            if (controllerDrawnCard.CardNumber > 6 && controllerDrawnCard.CardNumber < 9)
+            if (controllerDrawnCard.CardNumber > 0 && controllerDrawnCard.CardNumber < 13)
             {
                 ShowActionsButtonEvent?.Invoke();
             }
@@ -514,7 +517,7 @@ public class CardManager : MonoBehaviour
 
             GameObject _selectedCard = playerPanel.transform.GetChild(i).gameObject;
             CardController controller = _selectedCard.GetComponent<CardController>();
-            controller.SetOutline(false);
+            controller.SetOutlineForLocalPlayer(false);
             controller.CardNumber = cardNumber;
 
             // Bewegt die Karte zum Graveyard
@@ -590,7 +593,7 @@ public class CardManager : MonoBehaviour
             {
                 GameObject card = playerPanel.transform.GetChild(i).gameObject;
                 CardController controller = card.GetComponent<CardController>();
-                controller.SetOutline(false);
+                controller.SetOutlineForLocalPlayer(false);
             }
         }
     }
@@ -646,10 +649,68 @@ public class CardManager : MonoBehaviour
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public void ReduceFlippedCardCount()
+    public void ActionButtonClicked()
     {
-        flippedCardCount--;
-        allCardsAreFlippedBack = false;
+        int trueCount = 0;
+        int clickedCardIndex = 0;
+
+        // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
+        // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
+        // worden ist
+        for (int i = 0; i < _clickedCards.Length; i++)
+        {
+            if (_clickedCards[i])
+            {
+                clickedCardIndex = i;
+                trueCount++;
+            }
+        }
+
+        // Wertet aus, wie viele Karten angeklickt wurden und führt dementsprechend 
+        // eine Aktion aus
+        if (trueCount == 0)
+        {
+            Debug.Log("Du musst eine Karte selektieren, um sie dir angucken zu können");
+        }
+        else if (trueCount > 1)
+        {
+            Debug.Log("Du darfst dir nur eine Karte angucken");
+        }
+        else
+        {
+            HideDiscardAndExchangeButtonEvent?.Invoke();
+
+            // Dreht die Karte angeklickte Karte um lässt sie zwei Sekunden umgedreht und dreht sie 
+            // im Anschluss wieder um und beendet den Zug
+            GameObject card = _spawnCardPlayerPos.transform.GetChild(clickedCardIndex).gameObject;
+            CardController controller = card.GetComponent<CardController>();
+
+            controller.SetOutlineForAllPlayers(false);
+
+            StartCoroutine(DoMoving(clickedCardIndex));
+        }
+    }
+
+    IEnumerator DoMoving(int clickedCardIndex)
+    {
+        GameObject card = _spawnCardPlayerPos.transform.GetChild(clickedCardIndex).gameObject;
+        CardController controller = card.GetComponent<CardController>();
+
+        LeanTween.rotateY(card, 90.0f, 0.25f);
+        yield return new WaitForSeconds(0.25f);
+
+        controller.SetCardBackImageVisibility(false);
+        LeanTween.rotateY(card, 0.0f, 0.25f);
+        yield return new WaitForSeconds(2.25f);
+
+        LeanTween.rotateY(card, 90.0f, 0.25f);
+        yield return new WaitForSeconds(0.25f);
+
+        controller.SetCardBackImageVisibility(true);
+        LeanTween.rotateY(card, 0.0f, 0.25f);
+        yield return new WaitForSeconds(0.75f);
+
+        EndTurnEvent?.Invoke();
     }
 
 }
