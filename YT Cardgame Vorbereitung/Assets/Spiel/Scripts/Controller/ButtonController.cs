@@ -5,10 +5,7 @@ using UnityEngine.UI;
 
 public class ButtonController : MonoBehaviour
 {
-    public static event Action DiscardCardEvent;
-    public static event Action ExchangeCardEvent;
     public static event Action<ulong> EndGameStartedEvent;
-    public static event Action EndGameClickedEvent;
 
 
     public Button discardButton;
@@ -30,7 +27,7 @@ public class ButtonController : MonoBehaviour
         CardController.OnGraveyardCardClickedEvent += HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged += ShowEndGameButton;
         CardManager.ShowActionsButtonEvent += ShowActionsButton;
-        CardManager.HideDiscardAndExchangeButtonEvent += HideDiscardAndExchangeButton;
+        CardManager.HidePlayerButtonEvent += HidePlayerButton;
     }
 
 
@@ -42,7 +39,7 @@ public class ButtonController : MonoBehaviour
         CardController.OnGraveyardCardClickedEvent -= HideEndGameButton;
         GameManager.Instance.currentPlayerId.OnValueChanged -= ShowEndGameButton;
         CardManager.ShowActionsButtonEvent -= ShowActionsButton;
-        CardManager.HideDiscardAndExchangeButtonEvent -= HideDiscardAndExchangeButton;
+        CardManager.HidePlayerButtonEvent -= HidePlayerButton;
     }
 
     private void ShowEndGameButton(ulong previousValue, ulong newValue)
@@ -85,22 +82,22 @@ public class ButtonController : MonoBehaviour
 
     public void DiscardButtonClicked()
     {
-        Debug.Log("Ich möchte die Karte wieder abgeben.");
         HidePlayerButton();
-        DiscardCardEvent?.Invoke();
     }
 
     public void ExchangeButtonClicked()
     {
-        Debug.Log("Ich möchte die Karte mit einer anderen Karte tauschen.");
-        ExchangeCardEvent?.Invoke();
+
+    }
+
+    public void ActionsButtonClicked()
+    {
+        HidePlayerButton();
     }
 
     public void EndGameButtonClicked()
     {
-        Debug.Log("Ich möchte das Spiel beenden.");
         HideEndGameButton();
-        EndGameClickedEvent?.Invoke();
         EndGameStartedEvent?.Invoke(NetworkManager.Singleton.LocalClientId);
     }
 }

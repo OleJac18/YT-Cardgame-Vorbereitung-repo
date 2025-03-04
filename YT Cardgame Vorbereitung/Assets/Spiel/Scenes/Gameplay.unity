@@ -3270,14 +3270,14 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1558057839}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: 0.009069311, w: 0.99995893}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 699578467}
   m_Father: {fileID: 2140357992}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 1.039}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 314, y: -210}
@@ -3329,6 +3329,18 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2140357993}
         m_TargetAssemblyTypeName: ButtonController, Assembly-CSharp
+        m_MethodName: ExchangeButtonClicked
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 636591347}
+        m_TargetAssemblyTypeName: NetworkCardManager, Assembly-CSharp
         m_MethodName: ExchangeButtonClicked
         m_Mode: 1
         m_Arguments:
@@ -4372,6 +4384,30 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 1935967950}
+        m_TargetAssemblyTypeName: CardManager, Assembly-CSharp
+        m_MethodName: MovePlayerDrawnCardToGraveyardPos
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 636591347}
+        m_TargetAssemblyTypeName: NetworkCardManager, Assembly-CSharp
+        m_MethodName: MoveEnemyCardToGraveyardPos
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1822134045
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5269,6 +5305,30 @@ MonoBehaviour:
       - m_Target: {fileID: 2140357993}
         m_TargetAssemblyTypeName: ButtonController, Assembly-CSharp
         m_MethodName: EndGameButtonClicked
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1935967950}
+        m_TargetAssemblyTypeName: CardManager, Assembly-CSharp
+        m_MethodName: ResetOutlinePlayerCards
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 636591347}
+        m_TargetAssemblyTypeName: NetworkCardManager, Assembly-CSharp
+        m_MethodName: ResetOutlineEnemyCardsClientRpc
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

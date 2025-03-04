@@ -2,9 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
-using UnityEditor;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
 public class CardManager : MonoBehaviour
 {
@@ -22,9 +20,11 @@ public class CardManager : MonoBehaviour
 
     public static event Action ShowDiscardAndExchangeButtonEvent;
     public static event Action ShowActionsButtonEvent;
-    public static event Action HideDiscardAndExchangeButtonEvent;
+    public static event Action HidePlayerButtonEvent;
+    public static event Action DeactivateInteractableStateEvent;
     public static event Action EndTurnEvent;
     public static event Action AllCardsAreFlippedBackEvent;
+    public static event Action DiscardCardEvent;
 
     public static int flippedCardCount;
     public int FlippedCardCount;
@@ -61,8 +61,6 @@ public class CardManager : MonoBehaviour
         }
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
-        ButtonController.DiscardCardEvent += MovePlayerDrawnCardToGraveyardPos;
-        ButtonController.EndGameClickedEvent += ResetOutlinePlayerCards;
         CardController.OnCardClickedEvent += SetClickedCard;
         CardController.OnCardFlippedEvent += SetFlippedCard;
         CardController.OnCardFlippedBackEvent += CardFlippedBack;
@@ -73,8 +71,6 @@ public class CardManager : MonoBehaviour
     private void OnDestroy()
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
-        ButtonController.DiscardCardEvent -= MovePlayerDrawnCardToGraveyardPos;
-        ButtonController.EndGameClickedEvent -= ResetOutlinePlayerCards;
         CardController.OnCardClickedEvent -= SetClickedCard;
         CardController.OnCardFlippedEvent -= SetFlippedCard;
         CardController.OnCardFlippedBackEvent -= CardFlippedBack;
@@ -317,7 +313,7 @@ public class CardManager : MonoBehaviour
 
             // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
             // Aktion ausgeführt werden kann
-            if (controllerDrawnCard.CardNumber > 0 && controllerDrawnCard.CardNumber < 13)
+            if (controllerDrawnCard.CardNumber > 6 && controllerDrawnCard.CardNumber < 9)
             {
                 ShowActionsButtonEvent?.Invoke();
             }
@@ -615,7 +611,7 @@ public class CardManager : MonoBehaviour
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    
+
     private void CardFlippedBack(int flippedCardCount, bool isFlipped, int index)
     {
         SetFlippedCard(isFlipped, index);
@@ -678,7 +674,8 @@ public class CardManager : MonoBehaviour
         }
         else
         {
-            HideDiscardAndExchangeButtonEvent?.Invoke();
+            HidePlayerButtonEvent?.Invoke();
+            DeactivateInteractableStateEvent?.Invoke();
 
             // Dreht die Karte angeklickte Karte um lässt sie zwei Sekunden umgedreht und dreht sie 
             // im Anschluss wieder um und beendet den Zug
@@ -710,7 +707,8 @@ public class CardManager : MonoBehaviour
         LeanTween.rotateY(card, 0.0f, 0.25f);
         yield return new WaitForSeconds(0.75f);
 
-        EndTurnEvent?.Invoke();
+        MovePlayerDrawnCardToGraveyardPos();
+        DiscardCardEvent?.Invoke();
     }
 
 }

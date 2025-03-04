@@ -28,7 +28,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private Vector3 _hoverScale;
 
     private bool _isFlipped;
-    [SerializeField] 
+    [SerializeField]
 
     private void Awake()
     {
@@ -42,6 +42,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void Start()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged += SetInteractableState;
+        CardManager.DeactivateInteractableStateEvent += DeactivateInteractableState;
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
     }
@@ -49,6 +50,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void OnDestroy()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged -= SetInteractableState;
+        CardManager.DeactivateInteractableStateEvent -= DeactivateInteractableState;
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
     }
@@ -129,7 +131,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
         else
         {
-            if (CardManager.flippedCardCount < 2 && !_isFlipped) 
+            if (CardManager.flippedCardCount < 2 && !_isFlipped)
             {
                 Debug.Log("Die Karte ist noch nicht umgedreht.");
                 FlipCardAnimation(_isFlipped);
@@ -141,7 +143,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
                 // hin umgedreht oder selektiert werden können
                 int index = this.transform.GetSiblingIndex();
                 OnCardFlippedEvent?.Invoke(true, index);
-            } else if (_isFlipped)
+            }
+            else if (_isFlipped)
             {
                 Debug.Log("Die Karte ist bereits umgedreht.");
                 FlipCardAnimation(_isFlipped);
@@ -151,8 +154,9 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
                 // Damit vom CardManager angegeben werden kann, ob die Karten weiter
                 // hin umgedreht oder selektiert werden können
                 int index = this.transform.GetSiblingIndex();
-                OnCardFlippedBackEvent?.Invoke(CardManager.flippedCardCount,false, index);
-            } else if (CardManager.flippedCardCount == 2 && CardManager.allCardsAreFlippedBack)
+                OnCardFlippedBackEvent?.Invoke(CardManager.flippedCardCount, false, index);
+            }
+            else if (CardManager.flippedCardCount == 2 && CardManager.allCardsAreFlippedBack)
             {
                 SelectionAnimation();
             }
@@ -217,6 +221,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         isSelectable = currentPlayerId == localClientId;
         canHover = currentPlayerId == localClientId;
+
+        SetHoverState(_originalScale);
+    }
+
+    private void DeactivateInteractableState()
+    {
+        if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
+
+        isSelectable = false;
+        canHover = false;
 
         SetHoverState(_originalScale);
     }

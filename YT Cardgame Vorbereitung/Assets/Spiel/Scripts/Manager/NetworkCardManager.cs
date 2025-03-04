@@ -23,10 +23,8 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHoveredEvent += SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        ButtonController.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
-        ButtonController.EndGameClickedEvent += ResetOutlineEnemyCardsClientRpc;
+        CardManager.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent += ServFirstCards;
-        ButtonController.ExchangeCardEvent += ExchangeButtonClicked;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
     }
 
@@ -37,10 +35,8 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnCardHoveredEvent -= SetEnemyCardHoverEffectClientRpc;
         CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        ButtonController.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
-        ButtonController.EndGameClickedEvent -= ResetOutlineEnemyCardsClientRpc;
+        CardManager.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent -= ServFirstCards;
-        ButtonController.ExchangeCardEvent -= ExchangeButtonClicked;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
     }
 
@@ -92,13 +88,13 @@ public class NetworkCardManager : NetworkBehaviour
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    private void MoveEnemyCardToGraveyardPos()
+    public void MoveEnemyCardToGraveyardPos()
     {
         int drawnCardNumber = _cardManager.GetDrawnCardNumber();
         MoveEnemyCardToGraveyardPosClientRpc(drawnCardNumber);
     }
 
-    private void ExchangeButtonClicked()
+    public void ExchangeButtonClicked()
     {
         if (_cardManager.IsAnyCardSelected())
         {
@@ -260,7 +256,7 @@ public class NetworkCardManager : NetworkBehaviour
     }
 
     [Rpc(SendTo.NotMe)]
-    private void ResetOutlineEnemyCardsClientRpc()
+    public void ResetOutlineEnemyCardsClientRpc()
     {
         _cardManager.ResetOutlineEnemyCards();
     }
