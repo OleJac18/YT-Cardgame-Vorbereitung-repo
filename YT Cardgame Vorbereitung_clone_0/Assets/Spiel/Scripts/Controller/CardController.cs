@@ -13,7 +13,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [SerializeField] private Card _card;
 
     public static event Action<Vector3, int> OnCardHoveredEvent;
-    public static event Action<bool, int> OnCardClickedEvent;
+    public static event Action<bool, int> OnPlayerCardClickedEvent;
+    public static event Action<bool, int> OnEnemyCardClickedEvent;
     public static event Action OnGraveyardCardClickedEvent;
     public static event Action<bool, int> OnCardFlippedEvent;
     public static event Action<int, bool, int> OnCardFlippedBackEvent;
@@ -45,6 +46,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         CardManager.DeactivateInteractableStateEvent += DeactivateInteractableState;
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
+        CardManager.SetEnemyCardInteractableStateEvent += SetEnemyCardInteractableState;
     }
 
     private void OnDestroy()
@@ -53,6 +55,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         CardManager.DeactivateInteractableStateEvent -= DeactivateInteractableState;
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
+        CardManager.SetEnemyCardInteractableStateEvent -= SetEnemyCardInteractableState;
     }
 
     public int CardNumber
@@ -184,7 +187,15 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _outline.enabled = !_outline.enabled;
 
         int index = this.transform.GetSiblingIndex();
-        OnCardClickedEvent?.Invoke(_outline.enabled, index);
+
+        if (_card.correspondingDeck == Card.Stack.PLAYERCARD)
+        {
+            OnPlayerCardClickedEvent?.Invoke(_outline.enabled, index);
+        } else if (_card.correspondingDeck == Card.Stack.ENEMYCARD)
+        {
+            OnEnemyCardClickedEvent?.Invoke(_outline.enabled, index);
+        }
+            
     }
 
     public void FlipCardAnimation(bool showCardBack)
@@ -210,7 +221,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _outline.enabled = visible;
 
         int index = this.transform.GetSiblingIndex();
-        OnCardClickedEvent?.Invoke(visible, index);
+        OnPlayerCardClickedEvent?.Invoke(visible, index);
     }
 
     private void SetInteractableState(ulong previousPlayerId, ulong currentPlayerId)
@@ -225,10 +236,18 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         SetHoverState(_originalScale);
     }
 
+    private void SetEnemyCardInteractableState(bool interactable)
+    {
+        if (_card.correspondingDeck != Card.Stack.ENEMYCARD) return;
+
+        isSelectable = interactable;
+        canHover = interactable;
+
+        SetHoverState(_originalScale);
+    }
+
     private void DeactivateInteractableState()
     {
-        if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
-
         isSelectable = false;
         canHover = false;
 

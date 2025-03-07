@@ -27,6 +27,7 @@ public class GameManager : NetworkBehaviour
     public static event Action<Player[], Player> UpdateScoreScreenEvent;
     public static event Action<Player> UpdateEnemyCardsEvent;
     public static event Action<ulong> ShowCaboTextEvent;
+    public static event Action<int> SendSpyedCardNumberEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
@@ -171,6 +172,14 @@ public class GameManager : NetworkBehaviour
         EndCurrentTurnAndSavePlayerWhoPressedServerRpc(clientId);
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    
+    public void ProcessOnSpyButtonClicked(ulong clientId, int cardNumberIndex)
+    {
+        List<int> cards = _playerManager.GetPlayerCards(clientId);
+        SendSpyedCardNumberClientRpc(cards[cardNumberIndex], RpcTarget.Single(clientId, RpcTargetUse.Temp));
+    }
+
 
     ////////////////////////////////////////////////////////////////////////
 
@@ -249,5 +258,13 @@ public class GameManager : NetworkBehaviour
     private void StartTransitionClientsAndHostRpc()
     {
         StartTransitionEvent?.Invoke();
+    }
+
+    ////////////////////////////////////////////////
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    public void SendSpyedCardNumberClientRpc(int cardNumber, RpcParams rpcParams = default)
+    {
+        SendSpyedCardNumberEvent?.Invoke(cardNumber);
     }
 }

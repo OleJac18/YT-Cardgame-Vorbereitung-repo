@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,6 +13,8 @@ public class ButtonController : MonoBehaviour
     public Button exchangeButton;
     public Button actionsButton;
     public Button endGameButton;
+
+    public TextMeshProUGUI actionsButtonText;
 
     // Start is called before the first frame update
     void Start()
@@ -67,9 +70,10 @@ public class ButtonController : MonoBehaviour
         exchangeButton.gameObject.SetActive(false);
     }
 
-    private void ShowActionsButton()
+    private void ShowActionsButton(string buttonText)
     {
         actionsButton.gameObject.SetActive(true);
+        actionsButtonText.text = buttonText;
     }
 
     public void HidePlayerButton()

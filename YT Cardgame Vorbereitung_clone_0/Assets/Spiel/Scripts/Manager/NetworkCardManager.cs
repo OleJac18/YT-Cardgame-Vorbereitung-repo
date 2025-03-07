@@ -21,11 +21,13 @@ public class NetworkCardManager : NetworkBehaviour
 
         CardDeckUI.OnCardDeckClicked += HandleCardDeckClicked;
         CardController.OnCardHoveredEvent += SetEnemyCardHoverEffectClientRpc;
-        CardController.OnCardClickedEvent += SetEnemyCardClickedClientRpc;
+        CardController.OnPlayerCardClickedEvent += SetEnemyCardClickedClientRpc;
+        CardController.OnEnemyCardClickedEvent += SetPlayerCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
         CardManager.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent += ServFirstCards;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
+        GameManager.SendSpyedCardNumberEvent += StartHandleSpyAction;
     }
 
     public override void OnDestroy()
@@ -33,11 +35,13 @@ public class NetworkCardManager : NetworkBehaviour
         base.OnDestroy();
         CardDeckUI.OnCardDeckClicked -= HandleCardDeckClicked;
         CardController.OnCardHoveredEvent -= SetEnemyCardHoverEffectClientRpc;
-        CardController.OnCardClickedEvent -= SetEnemyCardClickedClientRpc;
+        CardController.OnPlayerCardClickedEvent -= SetEnemyCardClickedClientRpc;
+        CardController.OnEnemyCardClickedEvent -= SetPlayerCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
         CardManager.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
+        GameManager.SendSpyedCardNumberEvent -= StartHandleSpyAction;
     }
 
     private void HandleCardDeckClicked()
@@ -208,8 +212,21 @@ public class NetworkCardManager : NetworkBehaviour
     private void SetEnemyCardClickedClientRpc(bool isSelected, int index)
     {
         if (IsServer && !IsHost) return;
-        _cardManager.SetEnemyCardClicked(isSelected, index);
-        _cardManager.SetClickedCard(isSelected, index);
+        _cardManager.SetEnemyCardOutline(isSelected, index);
+        _cardManager.SetPlayerClickedCardIndex(isSelected, index);
+    }
+
+    /// <summary>
+    /// Lässt bei allen Clients eine spezifische Enemycard selektiert aussehen
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
+    [Rpc(SendTo.NotMe)]
+    private void SetPlayerCardClickedClientRpc(bool isSelected, int index)
+    {
+        if (IsServer && !IsHost) return;
+        _cardManager.SetEnemyCardOutline(isSelected, index);
+        //_cardManager.SetEnemyClickedCardIndex(isSelected, index);
     }
 
     /// <summary>
@@ -273,5 +290,18 @@ public class NetworkCardManager : NetworkBehaviour
     private void HandleCardExchangeClickedServerRpc(ulong clientId)
     {
         GameManager.Instance.GetPlayerCardsAndProcessSelectedCards(clientId);
+    }
+
+
+    /////////////////////////////////////////////////////
+    [Rpc(SendTo.Server)]
+    public void OnSpyButtonClickedServerRpc(ulong clientId, int clickedCardIndex)
+    {
+        GameManager.Instance.ProcessOnSpyButtonClicked(clientId, clickedCardIndex);
+    }
+
+    private void StartHandleSpyAction(int cardNumber)
+    {
+        _cardManager.HandleSpyAction(cardNumber);
     }
 }

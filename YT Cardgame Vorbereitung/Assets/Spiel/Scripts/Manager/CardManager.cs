@@ -4,6 +4,15 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
+public enum SpecialAction
+{
+    None,   // Keine spezielle Aktion
+    Peak,   // Karte ist eine 7 oder 8
+    Spy,    // Karte ist eine 9 oder 10
+    Swap    // Karte ist eine 11 oder 12
+}
+
+
 public class CardManager : MonoBehaviour
 {
     [SerializeField] private GameObject _cardPrefab;
@@ -14,17 +23,20 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _graveyardPos;
     [SerializeField] private GameObject _playerDrawnCardPos;
 
+    private NetworkCardManager _networkCardManager;
+
     //EnmeyPanel
     [SerializeField] private PlayerUIController _enemyUIController;
 
 
     public static event Action ShowDiscardAndExchangeButtonEvent;
-    public static event Action ShowActionsButtonEvent;
     public static event Action HidePlayerButtonEvent;
     public static event Action DeactivateInteractableStateEvent;
     public static event Action EndTurnEvent;
     public static event Action AllCardsAreFlippedBackEvent;
     public static event Action DiscardCardEvent;
+    public static event Action<string> ShowActionsButtonEvent;
+    public static event Action<bool> SetEnemyCardInteractableStateEvent;
 
     public static int flippedCardCount;
     public int FlippedCardCount;
@@ -39,14 +51,21 @@ public class CardManager : MonoBehaviour
     [SerializeField] private GameObject _graveyardCard;
     [SerializeField] private GameObject _drawnCard;
 
-    [SerializeField] private bool[] _clickedCards;
+    [SerializeField] private bool[] _playerClickedCards;
+    [SerializeField] private bool[] _enemyClickedCards;
     [SerializeField] private bool[] _flippedCards;
+
+    public SpecialAction currentAction = SpecialAction.None; // Standardmäßig keine Aktion
+
 
 
     // Start is called before the first frame update
     void Start()
     {
-        _clickedCards = new bool[4];
+        _networkCardManager = FindObjectOfType<NetworkCardManager>();
+
+        _playerClickedCards = new bool[4];
+        _enemyClickedCards = new bool[4];
         _flippedCards = new bool[4];
 
         // Für den Start, wenn ein Spieler sich zwei seiner Karten angucken darf
@@ -61,7 +80,8 @@ public class CardManager : MonoBehaviour
         }
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
-        CardController.OnCardClickedEvent += SetClickedCard;
+        CardController.OnPlayerCardClickedEvent += SetPlayerClickedCardIndex;
+        CardController.OnEnemyCardClickedEvent += SetEnemyClickedCardIndex;
         CardController.OnCardFlippedEvent += SetFlippedCard;
         CardController.OnCardFlippedBackEvent += CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent += UpdateEnemyCardNumbers;
@@ -71,7 +91,8 @@ public class CardManager : MonoBehaviour
     private void OnDestroy()
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
-        CardController.OnCardClickedEvent -= SetClickedCard;
+        CardController.OnPlayerCardClickedEvent -= SetPlayerClickedCardIndex;
+        CardController.OnEnemyCardClickedEvent -= SetEnemyClickedCardIndex;
         CardController.OnCardFlippedEvent -= SetFlippedCard;
         CardController.OnCardFlippedBackEvent -= CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent -= UpdateEnemyCardNumbers;
@@ -87,14 +108,19 @@ public class CardManager : MonoBehaviour
         return _cardStack.DrawTopCard();
     }
 
-    public void SetClickedCard(bool isSelected, int index)
+    public void SetPlayerClickedCardIndex(bool isSelected, int index)
     {
-        _clickedCards[index] = isSelected;
+        _playerClickedCards[index] = isSelected;
+    }
+
+    public void SetEnemyClickedCardIndex(bool isSelected, int index)
+    {
+        _enemyClickedCards[index] = isSelected;
     }
 
     public bool[] GetClickedCards()
     {
-        return _clickedCards;
+        return _playerClickedCards;
     }
 
     public int GetDrawnCardNumber()
@@ -139,9 +165,21 @@ public class CardManager : MonoBehaviour
     /// </summary>
     /// <param name="isSelected"></param>
     /// <param name="index"></param>
-    public void SetEnemyCardClicked(bool isSelected, int index)
+    public void SetEnemyCardOutline(bool isSelected, int index)
     {
         GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
+        CardController controller = card.GetComponent<CardController>();
+        controller.SetOutlineForLocalPlayer(isSelected);
+    }
+
+    /// <summary>
+    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
+    public void SetPlayerCardOutline(bool isSelected, int index)
+    {
+        GameObject card = _spawnCardPlayerPos.transform.GetChild(index).gameObject;
         CardController controller = card.GetComponent<CardController>();
         controller.SetOutlineForLocalPlayer(isSelected);
     }
@@ -311,11 +349,30 @@ public class CardManager : MonoBehaviour
         {
             ShowDiscardAndExchangeButtonEvent?.Invoke();
 
+            int cardNumber = controllerDrawnCard.CardNumber;
+
             // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
             // Aktion ausgeführt werden kann
-            if (controllerDrawnCard.CardNumber > 6 && controllerDrawnCard.CardNumber < 9)
+            if (cardNumber == 7 || cardNumber == 8)
             {
-                ShowActionsButtonEvent?.Invoke();
+                currentAction = SpecialAction.Peak;
+                ShowActionsButtonEvent?.Invoke("Peak");
+            } 
+            else if (cardNumber == 9 || cardNumber == 10)
+            {
+                currentAction = SpecialAction.Spy;
+                ShowActionsButtonEvent?.Invoke("Spy");
+                SetEnemyCardInteractableStateEvent?.Invoke(true);
+            }
+            else if (cardNumber == 11 || cardNumber == 12)
+            {
+                currentAction = SpecialAction.Swap;
+                ShowActionsButtonEvent?.Invoke("Swap");
+                SetEnemyCardInteractableStateEvent?.Invoke(true);
+            }
+            else
+            {
+                currentAction = SpecialAction.None; // Keine spezielle Aktion für andere Karten
             }
         }
     }
@@ -398,7 +455,7 @@ public class CardManager : MonoBehaviour
     /// <returns></returns>
     public bool IsAnyCardSelected()
     {
-        foreach (bool value in _clickedCards)
+        foreach (bool value in _playerClickedCards)
         {
             if (value)
             {
@@ -419,7 +476,7 @@ public class CardManager : MonoBehaviour
 
         for (int i = 0; i < cards.Length; i++)
         {
-            if (_clickedCards[i])
+            if (_playerClickedCards[i])
             {
                 if (referenceValue == null)
                 {
@@ -443,9 +500,9 @@ public class CardManager : MonoBehaviour
     /// <returns></returns>
     private int FindFirstTrueIndex()
     {
-        for (int i = 0; i < _clickedCards.Length; i++)
+        for (int i = 0; i < _playerClickedCards.Length; i++)
         {
-            if (_clickedCards[i])
+            if (_playerClickedCards[i])
             {
                 return i; // Gibt den Index des ersten Elements zurück, das true ist
             }
@@ -461,7 +518,7 @@ public class CardManager : MonoBehaviour
 
         for (int i = 0; i < cards.Length; i++)
         {
-            if (!_clickedCards[i])
+            if (!_playerClickedCards[i])
             {
                 // Füge alle nicht geklickten Karten hinzu
                 newCardsList.Add(cards[i]);
@@ -488,7 +545,7 @@ public class CardManager : MonoBehaviour
 
     public void ExchangePlayerCards(int[] cards)
     {
-        ExchangeCards(_spawnCardPlayerPos, _clickedCards, cards);
+        ExchangeCards(_spawnCardPlayerPos, _playerClickedCards, cards);
     }
 
 
@@ -567,7 +624,7 @@ public class CardManager : MonoBehaviour
 
     private void ResetClickedCards()
     {
-        Array.Fill(_clickedCards, false);
+        Array.Fill(_playerClickedCards, false);
     }
 
     public void ResetOutlinePlayerCards()
@@ -585,7 +642,7 @@ public class CardManager : MonoBehaviour
         int cardsCount = playerPanel.transform.childCount;
         for (int i = 0; i < cardsCount; i++)
         {
-            if (_clickedCards[i])
+            if (_playerClickedCards[i])
             {
                 GameObject card = playerPanel.transform.GetChild(i).gameObject;
                 CardController controller = card.GetComponent<CardController>();
@@ -647,15 +704,54 @@ public class CardManager : MonoBehaviour
 
     public void ActionButtonClicked()
     {
+        switch (currentAction)
+        {
+            case SpecialAction.Peak:
+                // Peak-Aktion durchführen (Karte 7 oder 8)
+                HandlePeakAction();
+                break;
+
+            case SpecialAction.Spy:
+                // Spy-Aktion durchführen (Karte 9 oder 10)
+                int trueCount = 0;
+                int clickedCardIndex = 0;
+
+                // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
+                // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
+                // worden ist
+                for (int i = 0; i < _playerClickedCards.Length; i++)
+                {
+                    if (_playerClickedCards[i])
+                    {
+                        clickedCardIndex = i;
+                        trueCount++;
+                    }
+                }
+
+                _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, clickedCardIndex);
+                break;
+
+            case SpecialAction.Swap:
+                // Swap-Aktion durchführen (Karte 11 oder 12)
+                break;
+
+            case SpecialAction.None:
+                // Keine Aktion ausführen
+                break;
+        }
+    }
+
+    private void HandlePeakAction()
+    {
         int trueCount = 0;
         int clickedCardIndex = 0;
 
         // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
         // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
         // worden ist
-        for (int i = 0; i < _clickedCards.Length; i++)
+        for (int i = 0; i < _playerClickedCards.Length; i++)
         {
-            if (_clickedCards[i])
+            if (_playerClickedCards[i])
             {
                 clickedCardIndex = i;
                 trueCount++;
@@ -677,6 +773,8 @@ public class CardManager : MonoBehaviour
             HidePlayerButtonEvent?.Invoke();
             DeactivateInteractableStateEvent?.Invoke();
 
+            currentAction = SpecialAction.None;
+
             // Dreht die Karte angeklickte Karte um lässt sie zwei Sekunden umgedreht und dreht sie 
             // im Anschluss wieder um und beendet den Zug
             GameObject card = _spawnCardPlayerPos.transform.GetChild(clickedCardIndex).gameObject;
@@ -684,13 +782,62 @@ public class CardManager : MonoBehaviour
 
             controller.SetOutlineForAllPlayers(false);
 
-            StartCoroutine(DoMoving(clickedCardIndex));
+            StartCoroutine(DoMoving(card));
         }
     }
 
-    IEnumerator DoMoving(int clickedCardIndex)
+    ////////////////////////////////////////////////////////////////////////////
+
+
+    public void HandleSpyAction(int cardNumber)
     {
-        GameObject card = _spawnCardPlayerPos.transform.GetChild(clickedCardIndex).gameObject;
+        int trueCount = 0;
+        int clickedCardIndex = 0;
+
+        // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
+        // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
+        // worden ist
+        for (int i = 0; i < _enemyClickedCards.Length; i++)
+        {
+            if (_enemyClickedCards[i])
+            {
+                clickedCardIndex = i;
+                trueCount++;
+            }
+        }
+
+        // Wertet aus, wie viele Karten angeklickt wurden und führt dementsprechend 
+        // eine Aktion aus
+        if (trueCount == 0)
+        {
+            Debug.Log("Du musst eine Karte selektieren, um sie dir angucken zu können");
+        }
+        else if (trueCount > 1)
+        {
+            Debug.Log("Du darfst dir nur eine Karte angucken");
+        }
+        else
+        {
+            HidePlayerButtonEvent?.Invoke();
+            DeactivateInteractableStateEvent?.Invoke();
+            SetEnemyCardInteractableStateEvent?.Invoke(false);
+
+            currentAction = SpecialAction.None;
+
+            // Dreht die Karte angeklickte Karte um lässt sie zwei Sekunden umgedreht und dreht sie 
+            // im Anschluss wieder um und beendet den Zug
+            GameObject card = _spawnCardEnemyPos.transform.GetChild(clickedCardIndex).gameObject;
+            CardController controller = card.GetComponent<CardController>();
+            controller.CardNumber = cardNumber;
+
+            controller.SetOutlineForAllPlayers(false);
+
+            StartCoroutine(DoMoving(card));
+        }
+    }
+
+    IEnumerator DoMoving(GameObject card)
+    {
         CardController controller = card.GetComponent<CardController>();
 
         LeanTween.rotateY(card, 90.0f, 0.25f);
@@ -709,6 +856,7 @@ public class CardManager : MonoBehaviour
 
         MovePlayerDrawnCardToGraveyardPos();
         DiscardCardEvent?.Invoke();
-    }
 
+        controller.CardNumber = 99;
+    }
 }

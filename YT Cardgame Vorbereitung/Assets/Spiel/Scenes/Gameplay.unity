@@ -5432,6 +5432,7 @@ MonoBehaviour:
   exchangeButton: {fileID: 1558057842}
   actionsButton: {fileID: 1503103190}
   endGameButton: {fileID: 2053488104}
+  actionsButtonText: {fileID: 1081452804}
 --- !u!1 &2145250770
 GameObject:
   m_ObjectHideFlags: 0
