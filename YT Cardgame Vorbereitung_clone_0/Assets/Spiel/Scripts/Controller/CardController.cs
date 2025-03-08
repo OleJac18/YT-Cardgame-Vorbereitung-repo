@@ -134,7 +134,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
         else
         {
-            if (CardManager.flippedCardCount < 2 && !_isFlipped)
+            if (CardManager.flippedCardCount < 2 && !_isFlipped && _card.correspondingDeck == Card.Stack.PLAYERCARD)
             {
                 Debug.Log("Die Karte ist noch nicht umgedreht.");
                 FlipCardAnimation(_isFlipped);
@@ -147,7 +147,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
                 int index = this.transform.GetSiblingIndex();
                 OnCardFlippedEvent?.Invoke(true, index);
             }
-            else if (_isFlipped)
+            else if (_isFlipped && _card.correspondingDeck == Card.Stack.PLAYERCARD)
             {
                 Debug.Log("Die Karte ist bereits umgedreht.");
                 FlipCardAnimation(_isFlipped);
@@ -191,11 +191,12 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         if (_card.correspondingDeck == Card.Stack.PLAYERCARD)
         {
             OnPlayerCardClickedEvent?.Invoke(_outline.enabled, index);
-        } else if (_card.correspondingDeck == Card.Stack.ENEMYCARD)
+        }
+        else if (_card.correspondingDeck == Card.Stack.ENEMYCARD)
         {
             OnEnemyCardClickedEvent?.Invoke(_outline.enabled, index);
         }
-            
+
     }
 
     public void FlipCardAnimation(bool showCardBack)

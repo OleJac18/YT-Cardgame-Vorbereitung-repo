@@ -351,28 +351,31 @@ public class CardManager : MonoBehaviour
 
             int cardNumber = controllerDrawnCard.CardNumber;
 
-            // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
-            // Aktion ausgeführt werden kann
-            if (cardNumber == 7 || cardNumber == 8)
+            if (corresDeck == Card.Stack.CARDDECK)
             {
-                currentAction = SpecialAction.Peak;
-                ShowActionsButtonEvent?.Invoke("Peak");
-            } 
-            else if (cardNumber == 9 || cardNumber == 10)
-            {
-                currentAction = SpecialAction.Spy;
-                ShowActionsButtonEvent?.Invoke("Spy");
-                SetEnemyCardInteractableStateEvent?.Invoke(true);
-            }
-            else if (cardNumber == 11 || cardNumber == 12)
-            {
-                currentAction = SpecialAction.Swap;
-                ShowActionsButtonEvent?.Invoke("Swap");
-                SetEnemyCardInteractableStateEvent?.Invoke(true);
-            }
-            else
-            {
-                currentAction = SpecialAction.None; // Keine spezielle Aktion für andere Karten
+                // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
+                // Aktion ausgeführt werden kann
+                if (cardNumber == 7 || cardNumber == 8)
+                {
+                    currentAction = SpecialAction.Peak;
+                    ShowActionsButtonEvent?.Invoke("Peak");
+                }
+                else if (cardNumber == 9 || cardNumber == 10)
+                {
+                    currentAction = SpecialAction.Spy;
+                    ShowActionsButtonEvent?.Invoke("Spy");
+                    SetEnemyCardInteractableStateEvent?.Invoke(true);
+                }
+                else if (cardNumber == 11 || cardNumber == 12)
+                {
+                    currentAction = SpecialAction.Swap;
+                    ShowActionsButtonEvent?.Invoke("Swap");
+                    //SetEnemyCardInteractableStateEvent?.Invoke(true);
+                }
+                else
+                {
+                    currentAction = SpecialAction.None; // Keine spezielle Aktion für andere Karten
+                }
             }
         }
     }
@@ -427,7 +430,7 @@ public class CardManager : MonoBehaviour
 
             SetCardToGraveyardCard(_drawnCard);
             _drawnCard = null;
-            ResetClickedCards();
+            ResetPlayerClickedCards();
             EndTurnEvent?.Invoke();
         });
     }
@@ -613,7 +616,7 @@ public class CardManager : MonoBehaviour
 
             // Gezogene Karte intern löschen und den Zug beenden
             _drawnCard = null;
-            ResetClickedCards();
+            ResetPlayerClickedCards();
             LeanTween.delayedCall(0.6f, () =>
             {
                 EndTurnEvent?.Invoke();
@@ -622,9 +625,14 @@ public class CardManager : MonoBehaviour
     }
 
 
-    private void ResetClickedCards()
+    private void ResetPlayerClickedCards()
     {
         Array.Fill(_playerClickedCards, false);
+    }
+
+    private void ResetEnemyClickedCards()
+    {
+        Array.Fill(_enemyClickedCards, false);
     }
 
     public void ResetOutlinePlayerCards()
@@ -712,6 +720,8 @@ public class CardManager : MonoBehaviour
                 break;
 
             case SpecialAction.Spy:
+                Debug.Log("Spy Button geklickt");
+
                 // Spy-Aktion durchführen (Karte 9 oder 10)
                 int trueCount = 0;
                 int clickedCardIndex = 0;
@@ -719,16 +729,18 @@ public class CardManager : MonoBehaviour
                 // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
                 // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
                 // worden ist
-                for (int i = 0; i < _playerClickedCards.Length; i++)
+                for (int i = 0; i < _enemyClickedCards.Length; i++)
                 {
-                    if (_playerClickedCards[i])
+                    if (_enemyClickedCards[i])
                     {
                         clickedCardIndex = i;
                         trueCount++;
                     }
                 }
 
-                _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, clickedCardIndex);
+                Debug.Log("clickedCardIndex: " + clickedCardIndex);
+
+                _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, _enemyUIController.GetLocalPlayerId(), clickedCardIndex);
                 break;
 
             case SpecialAction.Swap:
@@ -831,6 +843,7 @@ public class CardManager : MonoBehaviour
             controller.CardNumber = cardNumber;
 
             controller.SetOutlineForAllPlayers(false);
+            ResetEnemyClickedCards();
 
             StartCoroutine(DoMoving(card));
         }

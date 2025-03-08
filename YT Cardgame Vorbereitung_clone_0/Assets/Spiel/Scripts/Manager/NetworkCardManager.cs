@@ -295,9 +295,9 @@ public class NetworkCardManager : NetworkBehaviour
 
     /////////////////////////////////////////////////////
     [Rpc(SendTo.Server)]
-    public void OnSpyButtonClickedServerRpc(ulong clientId, int clickedCardIndex)
+    public void OnSpyButtonClickedServerRpc(ulong clientId, ulong enemyClientId, int clickedCardIndex)
     {
-        GameManager.Instance.ProcessOnSpyButtonClicked(clientId, clickedCardIndex);
+        GameManager.Instance.ProcessOnSpyButtonClicked(clientId, enemyClientId, clickedCardIndex);
     }
 
     private void StartHandleSpyAction(int cardNumber)

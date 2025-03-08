@@ -89,11 +89,6 @@ public class ButtonController : MonoBehaviour
         HidePlayerButton();
     }
 
-    public void ExchangeButtonClicked()
-    {
-
-    }
-
     public void ActionsButtonClicked()
     {
         HidePlayerButton();

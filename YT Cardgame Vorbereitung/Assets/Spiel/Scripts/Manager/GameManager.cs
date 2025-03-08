@@ -174,9 +174,9 @@ public class GameManager : NetworkBehaviour
 
     ////////////////////////////////////////////////////////////////////////
     
-    public void ProcessOnSpyButtonClicked(ulong clientId, int cardNumberIndex)
+    public void ProcessOnSpyButtonClicked(ulong clientId, ulong enemyClientId, int cardNumberIndex)
     {
-        List<int> cards = _playerManager.GetPlayerCards(clientId);
+        List<int> cards = _playerManager.GetPlayerCards(enemyClientId);
         SendSpyedCardNumberClientRpc(cards[cardNumberIndex], RpcTarget.Single(clientId, RpcTargetUse.Temp));
     }
 
