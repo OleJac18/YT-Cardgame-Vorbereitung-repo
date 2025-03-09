@@ -173,7 +173,7 @@ public class CardManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
+    /// Updated den Selektierzustand von einer Player Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
     /// </summary>
     /// <param name="isSelected"></param>
     /// <param name="index"></param>
@@ -709,7 +709,7 @@ public class CardManager : MonoBehaviour
     }
 
     ////////////////////////////////////////////////////////////////////////////
-
+    // Spezielle Aktionen wie Peak, Spy oder Swap
     public void ActionButtonClicked()
     {
         switch (currentAction)
@@ -720,27 +720,16 @@ public class CardManager : MonoBehaviour
                 break;
 
             case SpecialAction.Spy:
+                // Spy-Aktion durchführen (Karte 9 oder 10)
                 Debug.Log("Spy Button geklickt");
 
-                // Spy-Aktion durchführen (Karte 9 oder 10)
-                int trueCount = 0;
-                int clickedCardIndex = 0;
+                (int clickedCardIndex, bool isSingleCardSelected) = CheckClickedCards(_enemyClickedCards);
 
-                // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
-                // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
-                // worden ist
-                for (int i = 0; i < _enemyClickedCards.Length; i++)
+                if (isSingleCardSelected)
                 {
-                    if (_enemyClickedCards[i])
-                    {
-                        clickedCardIndex = i;
-                        trueCount++;
-                    }
+                    _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, _enemyUIController.GetLocalPlayerId(), clickedCardIndex);
                 }
 
-                Debug.Log("clickedCardIndex: " + clickedCardIndex);
-
-                _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, _enemyUIController.GetLocalPlayerId(), clickedCardIndex);
                 break;
 
             case SpecialAction.Swap:
@@ -755,32 +744,9 @@ public class CardManager : MonoBehaviour
 
     private void HandlePeakAction()
     {
-        int trueCount = 0;
-        int clickedCardIndex = 0;
+        (int clickedCardIndex, bool isSingleCardSelected) = CheckClickedCards(_playerClickedCards);
 
-        // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
-        // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
-        // worden ist
-        for (int i = 0; i < _playerClickedCards.Length; i++)
-        {
-            if (_playerClickedCards[i])
-            {
-                clickedCardIndex = i;
-                trueCount++;
-            }
-        }
-
-        // Wertet aus, wie viele Karten angeklickt wurden und führt dementsprechend 
-        // eine Aktion aus
-        if (trueCount == 0)
-        {
-            Debug.Log("Du musst eine Karte selektieren, um sie dir angucken zu können");
-        }
-        else if (trueCount > 1)
-        {
-            Debug.Log("Du darfst dir nur eine Karte angucken");
-        }
-        else
+        if (isSingleCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
             DeactivateInteractableStateEvent?.Invoke();
@@ -803,32 +769,9 @@ public class CardManager : MonoBehaviour
 
     public void HandleSpyAction(int cardNumber)
     {
-        int trueCount = 0;
-        int clickedCardIndex = 0;
+        (int clickedCardIndex, bool isSingleCardSelected) = CheckClickedCards(_enemyClickedCards);
 
-        // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
-        // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
-        // worden ist
-        for (int i = 0; i < _enemyClickedCards.Length; i++)
-        {
-            if (_enemyClickedCards[i])
-            {
-                clickedCardIndex = i;
-                trueCount++;
-            }
-        }
-
-        // Wertet aus, wie viele Karten angeklickt wurden und führt dementsprechend 
-        // eine Aktion aus
-        if (trueCount == 0)
-        {
-            Debug.Log("Du musst eine Karte selektieren, um sie dir angucken zu können");
-        }
-        else if (trueCount > 1)
-        {
-            Debug.Log("Du darfst dir nur eine Karte angucken");
-        }
-        else
+        if (isSingleCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
             DeactivateInteractableStateEvent?.Invoke();
@@ -849,6 +792,46 @@ public class CardManager : MonoBehaviour
         }
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+
+    private (int clickedCardIndex, bool isSingleCardSelected) CheckClickedCards(bool[] clickedCards)
+    {
+        int trueCount = 0;
+        int clickedCardIndex = 0;
+        bool isSingleCardSelected;
+
+        // Zählt wie viele Karten angeklickt worden sind und merkt sich die letzte
+        // angeklickte Karte. Diese ist nur wichtig, wenn nur eine Karte angeklickt
+        // worden ist
+        for (int i = 0; i < clickedCards.Length; i++)
+        {
+            if (clickedCards[i])
+            {
+                clickedCardIndex = i;
+                trueCount++;
+            }
+        }
+
+        // Wertet aus, wie viele Karten angeklickt wurden und führt dementsprechend 
+        // eine Aktion aus
+        if (trueCount == 0)
+        {
+            Debug.Log("Du musst eine Karte selektieren");
+            isSingleCardSelected = false;
+        }
+        else if (trueCount > 1)
+        {
+            Debug.Log("Du darfst nur eine Karte selektieren");
+            isSingleCardSelected = false;
+        }
+        else
+        {
+            isSingleCardSelected = true;
+        }
+
+        return (clickedCardIndex, isSingleCardSelected);
+    }
+
     IEnumerator DoMoving(GameObject card)
     {
         CardController controller = card.GetComponent<CardController>();
@@ -865,7 +848,7 @@ public class CardManager : MonoBehaviour
 
         controller.SetCardBackImageVisibility(true);
         LeanTween.rotateY(card, 0.0f, 0.25f);
-        yield return new WaitForSeconds(0.75f);
+        yield return new WaitForSeconds(0.25f);
 
         MovePlayerDrawnCardToGraveyardPos();
         DiscardCardEvent?.Invoke();

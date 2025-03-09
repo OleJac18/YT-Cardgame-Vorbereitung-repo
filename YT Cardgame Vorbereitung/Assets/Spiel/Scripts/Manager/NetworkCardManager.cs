@@ -217,7 +217,7 @@ public class NetworkCardManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Lässt bei allen Clients eine spezifische Enemycard selektiert aussehen
+    /// Lässt bei allen Clients eine spezifische Playercard selektiert aussehen
     /// </summary>
     /// <param name="isSelected"></param>
     /// <param name="index"></param>
@@ -225,7 +225,7 @@ public class NetworkCardManager : NetworkBehaviour
     private void SetPlayerCardClickedClientRpc(bool isSelected, int index)
     {
         if (IsServer && !IsHost) return;
-        _cardManager.SetEnemyCardOutline(isSelected, index);
+        _cardManager.SetPlayerCardOutline(isSelected, index);
         //_cardManager.SetEnemyClickedCardIndex(isSelected, index);
     }
 

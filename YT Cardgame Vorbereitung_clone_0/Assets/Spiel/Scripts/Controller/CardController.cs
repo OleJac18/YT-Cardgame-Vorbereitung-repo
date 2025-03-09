@@ -196,7 +196,6 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         {
             OnEnemyCardClickedEvent?.Invoke(_outline.enabled, index);
         }
-
     }
 
     public void FlipCardAnimation(bool showCardBack)
