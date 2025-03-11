@@ -609,7 +609,9 @@ public class CardManager : MonoBehaviour
         LeanTween.moveSpline(_drawnCard, points, 0.5f).setOnComplete(() =>
         {
             CardController controller = _drawnCard.GetComponent<CardController>();
-            controller.SetCorrespondingDeck(Card.Stack.PLAYERCARD);
+            Card.Stack corresDeck = isCurrentPlayer ? Card.Stack.PLAYERCARD : Card.Stack.ENEMYCARD;
+
+            controller.SetCorrespondingDeck(corresDeck);
             controller.FlipCardAnimation(true);
 
             // Parent der bewegten Karte zu dem spezifischen Playerpanel setzen und an die richtige Position
