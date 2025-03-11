@@ -7,6 +7,7 @@ using UnityEngine.UI;
 public class ButtonController : MonoBehaviour
 {
     public static event Action<ulong> EndGameStartedEvent;
+    public static event Action<bool> DiscardButtonClickedEvent;
 
 
     public Button discardButton;
@@ -87,6 +88,7 @@ public class ButtonController : MonoBehaviour
     public void DiscardButtonClicked()
     {
         HidePlayerButton();
+        DiscardButtonClickedEvent?.Invoke(false);
     }
 
     public void ActionsButtonClicked()

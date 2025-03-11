@@ -554,6 +554,7 @@ public class CardManager : MonoBehaviour
 
     public void ExchangeCards(GameObject playerPanel, bool[] clickedCards, int[] cards)
     {
+        SetEnemyCardInteractableStateEvent?.Invoke(false);
         MovePlayerCardsToGraveyardPos(playerPanel, clickedCards, cards);
         MoveDrawnCardToTarget(playerPanel, clickedCards);
     }

@@ -47,6 +47,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
         CardManager.SetEnemyCardInteractableStateEvent += SetEnemyCardInteractableState;
+        ButtonController.DiscardButtonClickedEvent += SetEnemyCardInteractableState;
     }
 
     private void OnDestroy()
@@ -56,6 +57,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
         CardManager.SetEnemyCardInteractableStateEvent -= SetEnemyCardInteractableState;
+        ButtonController.DiscardButtonClickedEvent -= SetEnemyCardInteractableState;
     }
 
     public int CardNumber
@@ -246,6 +248,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void SetEnemyCardInteractableState(bool interactable)
     {
         if (_card.correspondingDeck != Card.Stack.ENEMYCARD) return;
+        Debug.Log("Bin in der SetEnemyCardInteractableState Methode");
+        Debug.Log("Interactable: " + interactable);
 
         isSelectable = interactable;
         canHover = interactable;
