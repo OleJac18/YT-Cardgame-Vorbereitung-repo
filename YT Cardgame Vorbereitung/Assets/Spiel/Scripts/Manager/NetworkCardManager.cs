@@ -27,7 +27,8 @@ public class NetworkCardManager : NetworkBehaviour
         CardManager.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent += ServFirstCards;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
-        GameManager.SendSpyedCardNumberEvent += StartHandleSpyAction;
+        GameManager.SendSpiedCardNumberEvent += StartHandleSpyAction;
+        GameManager.SendSwappedCardNumberEvent += StartHandleSwapAction;
     }
 
     public override void OnDestroy()
@@ -41,7 +42,8 @@ public class NetworkCardManager : NetworkBehaviour
         CardManager.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
-        GameManager.SendSpyedCardNumberEvent -= StartHandleSpyAction;
+        GameManager.SendSpiedCardNumberEvent -= StartHandleSpyAction;
+        GameManager.SendSwappedCardNumberEvent -= StartHandleSwapAction;
     }
 
     private void HandleCardDeckClicked()
@@ -213,7 +215,7 @@ public class NetworkCardManager : NetworkBehaviour
     {
         if (IsServer && !IsHost) return;
         _cardManager.SetEnemyCardOutline(isSelected, index);
-        _cardManager.SetPlayerClickedCardIndex(isSelected, index);
+        _cardManager.SetEnemyClickedCardIndex(isSelected, index);
     }
 
     /// <summary>
@@ -226,7 +228,7 @@ public class NetworkCardManager : NetworkBehaviour
     {
         if (IsServer && !IsHost) return;
         _cardManager.SetPlayerCardOutline(isSelected, index);
-        //_cardManager.SetEnemyClickedCardIndex(isSelected, index);
+        _cardManager.SetPlayerClickedCardIndex(isSelected, index);
     }
 
     /// <summary>
@@ -303,5 +305,34 @@ public class NetworkCardManager : NetworkBehaviour
     private void StartHandleSpyAction(int cardNumber)
     {
         _cardManager.HandleSpyAction(cardNumber);
+    }
+
+    /////////////////////////////////////////////////////
+
+    public void OnSwapButtonClicked(ulong clientId, ulong enemyClientId, int playerClickedCardIndex, int enemyClickedCardIndex)
+    {
+        SetPlayerAndEnemyClickedCardsArraySpecificClientRpc(playerClickedCardIndex, enemyClickedCardIndex
+            , RpcTarget.Single(enemyClientId, RpcTargetUse.Temp));
+
+        OnSwapButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, enemyClientId
+            , playerClickedCardIndex, enemyClickedCardIndex);
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    private void SetPlayerAndEnemyClickedCardsArraySpecificClientRpc(int playerClickedCardIndex, int enemyClickedCardIndex, RpcParams rpcParams = default)
+    {
+        _cardManager.SetPlayerClickedCardIndex(true, enemyClickedCardIndex);
+        _cardManager.SetEnemyClickedCardIndex(true, playerClickedCardIndex);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void OnSwapButtonClickedServerRpc(ulong clientId, ulong enemyClientId, int playerClickedCardIndex, int enemyClickedCardIndex)
+    {
+        GameManager.Instance.ProcessOnSwapButtonClicked(clientId, enemyClientId, playerClickedCardIndex, enemyClickedCardIndex);
+    }
+
+    private void StartHandleSwapAction(int cardNumber, bool enableReturnToGraveyardEvent)
+    {
+        _cardManager.HandleSwapAction(cardNumber, enableReturnToGraveyardEvent);
     }
 }

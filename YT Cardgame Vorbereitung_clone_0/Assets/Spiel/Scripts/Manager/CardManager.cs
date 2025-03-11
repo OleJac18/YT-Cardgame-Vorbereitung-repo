@@ -370,7 +370,7 @@ public class CardManager : MonoBehaviour
                 {
                     currentAction = SpecialAction.Swap;
                     ShowActionsButtonEvent?.Invoke("Swap");
-                    //SetEnemyCardInteractableStateEvent?.Invoke(true);
+                    SetEnemyCardInteractableStateEvent?.Invoke(true);
                 }
                 else
                 {
@@ -402,7 +402,7 @@ public class CardManager : MonoBehaviour
         ResetOutlinePlayerCards();
 
         CardController controller = _drawnCard.GetComponent<CardController>();
-        ResetOutlinePlayerCards();
+        //ResetOutlinePlayerCards();
         MoveDrawnCardToGraveyardPos(controller.CardNumber);
     }
 
@@ -501,11 +501,11 @@ public class CardManager : MonoBehaviour
     /// </summary>
     /// <param name="clickedCards"></param>
     /// <returns></returns>
-    private int FindFirstTrueIndex()
+    private int FindFirstTrueIndex(bool[] _clickedCards)
     {
-        for (int i = 0; i < _playerClickedCards.Length; i++)
+        for (int i = 0; i < _clickedCards.Length; i++)
         {
-            if (_playerClickedCards[i])
+            if (_clickedCards[i])
             {
                 return i; // Gibt den Index des ersten Elements zurück, das true ist
             }
@@ -555,13 +555,15 @@ public class CardManager : MonoBehaviour
     public void ExchangeCards(GameObject playerPanel, bool[] clickedCards, int[] cards)
     {
         MovePlayerCardsToGraveyardPos(playerPanel, clickedCards, cards);
-        MoveDrawnCardToTarget(playerPanel);
+        MoveDrawnCardToTarget(playerPanel, clickedCards);
     }
 
     public void MovePlayerCardsToGraveyardPos(GameObject playerPanel, bool[] clickedCards, int[] cards)
     {
         // Erste Karte finden, die geklickt wurde
-        int index = FindFirstTrueIndex();
+        int index = FindFirstTrueIndex(clickedCards);
+        Debug.Log("Index: " + index);
+        Debug.Log("Cards in PlayerCardsToGraveyardPos: " + string.Join(", ", cards));
         int cardNumber = cards[index];
 
         Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
@@ -591,10 +593,10 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    private void MoveDrawnCardToTarget(GameObject playerPanel)
+    private void MoveDrawnCardToTarget(GameObject playerPanel, bool[] clickedCards)
     {
         // Erste Karte finden, die geklickt wurde
-        int index = FindFirstTrueIndex();
+        int index = FindFirstTrueIndex(clickedCards);
         GameObject _firstSelectedCard = playerPanel.transform.GetChild(index).gameObject;
 
         // Herausfinden, ob man der aktuelle Spieler ist, damit man sagen kann, wie der Bogen bei der Bewegung sein soll
@@ -637,6 +639,7 @@ public class CardManager : MonoBehaviour
 
     public void ResetOutlinePlayerCards()
     {
+        Debug.Log("Ich will die Outlines der Playerkarten zurücksetzen");
         ResetOutlineCards(_spawnCardPlayerPos);
     }
 
@@ -650,12 +653,12 @@ public class CardManager : MonoBehaviour
         int cardsCount = playerPanel.transform.childCount;
         for (int i = 0; i < cardsCount; i++)
         {
-            if (_playerClickedCards[i])
-            {
-                GameObject card = playerPanel.transform.GetChild(i).gameObject;
-                CardController controller = card.GetComponent<CardController>();
-                controller.SetOutlineForLocalPlayer(false);
-            }
+            //if (_playerClickedCards[i])
+            //{
+            GameObject card = playerPanel.transform.GetChild(i).gameObject;
+            CardController controller = card.GetComponent<CardController>();
+            controller.SetOutlineForLocalPlayer(false);
+            //}
         }
     }
 
@@ -712,6 +715,7 @@ public class CardManager : MonoBehaviour
     // Spezielle Aktionen wie Peak, Spy oder Swap
     public void ActionButtonClicked()
     {
+
         switch (currentAction)
         {
             case SpecialAction.Peak:
@@ -727,13 +731,22 @@ public class CardManager : MonoBehaviour
 
                 if (isSingleCardSelected)
                 {
-                    _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId, _enemyUIController.GetLocalPlayerId(), clickedCardIndex);
+                    _networkCardManager.OnSpyButtonClickedServerRpc(NetworkManager.Singleton.LocalClientId,
+                        _enemyUIController.GetLocalPlayerId(), clickedCardIndex);
                 }
 
                 break;
 
             case SpecialAction.Swap:
                 // Swap-Aktion durchführen (Karte 11 oder 12)
+                (int playerClickedCardIndex, bool isSinglePlayerCardSelected) = CheckClickedCards(_playerClickedCards);
+                (int enemyClickedCardIndex, bool isSingleEnemyCardSelected) = CheckClickedCards(_enemyClickedCards);
+
+                if (isSinglePlayerCardSelected && isSingleEnemyCardSelected)
+                {
+                    _networkCardManager.OnSwapButtonClicked(NetworkManager.Singleton.LocalClientId,
+                         _enemyUIController.GetLocalPlayerId(), playerClickedCardIndex, enemyClickedCardIndex);
+                }
                 break;
 
             case SpecialAction.None:
@@ -741,6 +754,9 @@ public class CardManager : MonoBehaviour
                 break;
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Peak Aktion
 
     private void HandlePeakAction()
     {
@@ -760,12 +776,12 @@ public class CardManager : MonoBehaviour
 
             controller.SetOutlineForAllPlayers(false);
 
-            StartCoroutine(DoMoving(card));
+            StartCoroutine(DoPeakAndSpyMoving(card));
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////
-
+    // Spy Aktion
 
     public void HandleSpyAction(int cardNumber)
     {
@@ -786,9 +802,48 @@ public class CardManager : MonoBehaviour
             controller.CardNumber = cardNumber;
 
             controller.SetOutlineForAllPlayers(false);
+
             ResetEnemyClickedCards();
 
-            StartCoroutine(DoMoving(card));
+            StartCoroutine(DoPeakAndSpyMoving(card));
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Swap Aktion
+
+    public void HandleSwapAction(int cardNumber, bool enableReturnToGraveyardEvent)
+    {
+        (int playerClickedCardIndex, bool isSinglePlayerCardSelected) = CheckClickedCards(_playerClickedCards);
+        (int enemyClickedCardIndex, bool isSingleEnemyCardSelected) = CheckClickedCards(_enemyClickedCards);
+
+        if (isSinglePlayerCardSelected && isSingleEnemyCardSelected)
+        {
+            HidePlayerButtonEvent?.Invoke();
+            DeactivateInteractableStateEvent?.Invoke();
+            SetEnemyCardInteractableStateEvent?.Invoke(false);
+
+            currentAction = SpecialAction.None;
+
+            // Reseted die Outline der angeklickten Spielerkartes und updated die Kartennummer
+            GameObject playerCard = _spawnCardPlayerPos.transform.GetChild(playerClickedCardIndex).gameObject;
+            CardController playerController = playerCard.GetComponent<CardController>();
+            playerController.CardNumber = 99;
+            playerController.SetCorrespondingDeck(Card.Stack.ENEMYCARD);
+            playerController.SetOutlineForAllPlayers(false);
+
+            // Reseted die Outline der angeklickten Enemykartes und updated die Kartennummer
+            GameObject enemyCard = _spawnCardEnemyPos.transform.GetChild(enemyClickedCardIndex).gameObject;
+            CardController enemyController = enemyCard.GetComponent<CardController>();
+            enemyController.CardNumber = cardNumber;
+            enemyController.SetCorrespondingDeck(Card.Stack.PLAYERCARD);
+            enemyController.SetOutlineForAllPlayers(false);
+
+            // Reseted die Array für die angeklickten Karten des Spielers und des Enemys
+            ResetPlayerClickedCards();
+            ResetEnemyClickedCards();
+
+            StartCoroutine(DoSwapMoving(playerCard, enemyCard, enableReturnToGraveyardEvent));
         }
     }
 
@@ -809,6 +864,7 @@ public class CardManager : MonoBehaviour
             {
                 clickedCardIndex = i;
                 trueCount++;
+                Debug.Log("TrueCount: " + trueCount + "; Index: " + i);
             }
         }
 
@@ -832,7 +888,9 @@ public class CardManager : MonoBehaviour
         return (clickedCardIndex, isSingleCardSelected);
     }
 
-    IEnumerator DoMoving(GameObject card)
+    // Bewegung, um die angeklickte Karte umzudrehen, wieder zurück zu drehen
+    // und anschließend die gezogene Karte abzulegen
+    IEnumerator DoPeakAndSpyMoving(GameObject card)
     {
         CardController controller = card.GetComponent<CardController>();
 
@@ -855,4 +913,58 @@ public class CardManager : MonoBehaviour
 
         controller.CardNumber = 99;
     }
+
+
+    IEnumerator DoSwapMoving(GameObject playerCard, GameObject enemyCard, bool enableReturnToGraveyardEvent)
+    {
+        Vector3[] playerPoints = MoveInCircle.CalculateCircle(8, playerCard.transform, enemyCard.transform, 1, 100);
+        Vector3[] enemyPoints = MoveInCircle.CalculateCircle(8, enemyCard.transform, playerCard.transform, 1, 100);
+
+        GameObject placeholderPlayerCard = SpawnPlaceholder(playerCard);
+        GameObject placeholderEnemyCard = SpawnPlaceholder(enemyCard);
+
+        playerCard.transform.SetParent(playerCard.transform.root);
+        enemyCard.transform.SetParent(enemyCard.transform.root);
+
+        LeanTween.moveSpline(playerCard, playerPoints, 0.5f);
+        LeanTween.moveSpline(enemyCard, enemyPoints, 0.5f);
+
+        yield return new WaitForSeconds(0.5f);
+
+        playerCard.transform.SetParent(placeholderEnemyCard.transform.parent);
+        playerCard.transform.SetSiblingIndex(placeholderEnemyCard.transform.GetSiblingIndex());
+
+        enemyCard.transform.SetParent(placeholderPlayerCard.transform.parent);
+        enemyCard.transform.SetSiblingIndex(placeholderPlayerCard.transform.GetSiblingIndex());
+
+        Destroy(placeholderPlayerCard);
+        Destroy(placeholderEnemyCard);
+
+        yield return new WaitForSeconds(0.25f);
+
+        if (enableReturnToGraveyardEvent)
+        {
+            MovePlayerDrawnCardToGraveyardPos();
+            DiscardCardEvent?.Invoke();
+        }
+    }
+
+    public GameObject SpawnPlaceholder(GameObject original)
+    {
+        // Erstelle eine Kopie des Original-GameObjects
+        GameObject placeholder = Instantiate(original, original.transform.position, original.transform.rotation);
+
+        placeholder.transform.SetParent(original.transform.parent);
+        placeholder.transform.SetSiblingIndex(original.transform.GetSiblingIndex());
+        placeholder.transform.localScale = Vector3.one;
+
+        // Mache es unsichtbar, indem du das Alpha der CavasGroup auf 0 setzt
+        if (placeholder.TryGetComponent<CanvasGroup>(out CanvasGroup cavasGroup))
+        {
+            cavasGroup.alpha = 0;
+        }
+
+        return placeholder; // Gibt das neue Platzhalter-Objekt zurück
+    }
+
 }

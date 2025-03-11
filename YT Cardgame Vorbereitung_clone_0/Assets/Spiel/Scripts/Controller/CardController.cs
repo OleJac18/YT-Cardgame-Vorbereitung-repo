@@ -136,7 +136,6 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         {
             if (CardManager.flippedCardCount < 2 && !_isFlipped && _card.correspondingDeck == Card.Stack.PLAYERCARD)
             {
-                Debug.Log("Die Karte ist noch nicht umgedreht.");
                 FlipCardAnimation(_isFlipped);
                 CardManager.flippedCardCount++;
                 _isFlipped = true;
@@ -149,7 +148,6 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             }
             else if (_isFlipped && _card.correspondingDeck == Card.Stack.PLAYERCARD)
             {
-                Debug.Log("Die Karte ist bereits umgedreht.");
                 FlipCardAnimation(_isFlipped);
                 _isFlipped = false;
 
@@ -221,7 +219,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _outline.enabled = visible;
 
         int index = this.transform.GetSiblingIndex();
-        OnPlayerCardClickedEvent?.Invoke(visible, index);
+        //OnPlayerCardClickedEvent?.Invoke(visible, index);
+
+        if (_card.correspondingDeck == Card.Stack.PLAYERCARD)
+        {
+            OnPlayerCardClickedEvent?.Invoke(_outline.enabled, index);
+        }
+        else if (_card.correspondingDeck == Card.Stack.ENEMYCARD)
+        {
+            OnEnemyCardClickedEvent?.Invoke(_outline.enabled, index);
+        }
     }
 
     private void SetInteractableState(ulong previousPlayerId, ulong currentPlayerId)

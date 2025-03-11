@@ -27,7 +27,8 @@ public class GameManager : NetworkBehaviour
     public static event Action<Player[], Player> UpdateScoreScreenEvent;
     public static event Action<Player> UpdateEnemyCardsEvent;
     public static event Action<ulong> ShowCaboTextEvent;
-    public static event Action<int> SendSpyedCardNumberEvent;
+    public static event Action<int> SendSpiedCardNumberEvent;
+    public static event Action<int, bool> SendSwappedCardNumberEvent;
 
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
@@ -173,11 +174,32 @@ public class GameManager : NetworkBehaviour
     }
 
     ////////////////////////////////////////////////////////////////////////
-    
+
     public void ProcessOnSpyButtonClicked(ulong clientId, ulong enemyClientId, int cardNumberIndex)
     {
         List<int> cards = _playerManager.GetPlayerCards(enemyClientId);
-        SendSpyedCardNumberClientRpc(cards[cardNumberIndex], RpcTarget.Single(clientId, RpcTargetUse.Temp));
+        SendSpiedCardNumberClientRpc(cards[cardNumberIndex], RpcTarget.Single(clientId, RpcTargetUse.Temp));
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+
+    public void ProcessOnSwapButtonClicked(ulong playerClientId, ulong enemyClientId, int playerClickedCardIndex, int enemyClickedCardIndex)
+    {
+        List<int> playerCards = _playerManager.GetPlayerCards(playerClientId);
+        List<int> enemyCards = _playerManager.GetPlayerCards(enemyClientId);
+
+        int playerCard = playerCards[playerClickedCardIndex];
+        int enemyCard = enemyCards[enemyClickedCardIndex];
+
+        playerCards[playerClickedCardIndex] = enemyCard;
+        enemyCards[enemyClickedCardIndex] = playerCard;
+
+        _playerManager.SetPlayerCards(playerClientId, playerCards);
+        _playerManager.SetPlayerCards(enemyClientId, enemyCards);
+
+
+        SendSwappedCardNumberClientRpc(enemyCard, true, RpcTarget.Single(playerClientId, RpcTargetUse.Temp));
+        SendSwappedCardNumberClientRpc(playerCard, false, RpcTarget.Single(enemyClientId, RpcTargetUse.Temp));
     }
 
 
@@ -263,8 +285,16 @@ public class GameManager : NetworkBehaviour
     ////////////////////////////////////////////////
 
     [Rpc(SendTo.SpecifiedInParams)]
-    public void SendSpyedCardNumberClientRpc(int cardNumber, RpcParams rpcParams = default)
+    public void SendSpiedCardNumberClientRpc(int cardNumber, RpcParams rpcParams = default)
     {
-        SendSpyedCardNumberEvent?.Invoke(cardNumber);
+        SendSpiedCardNumberEvent?.Invoke(cardNumber);
+    }
+
+    ////////////////////////////////////////////////
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    public void SendSwappedCardNumberClientRpc(int cardNumber, bool enableReturnToGraveyardEvent, RpcParams rpcParams = default)
+    {
+        SendSwappedCardNumberEvent?.Invoke(cardNumber, enableReturnToGraveyardEvent);
     }
 }

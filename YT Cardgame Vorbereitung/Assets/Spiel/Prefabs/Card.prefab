@@ -88,6 +88,7 @@ GameObject:
   - component: {fileID: 4973424707680850475}
   - component: {fileID: 7323801999923899701}
   - component: {fileID: 5661086826800237834}
+  - component: {fileID: 2819174865013705925}
   m_Layer: 5
   m_Name: Card
   m_TagString: Untagged
@@ -170,6 +171,12 @@ MonoBehaviour:
   numberTextTopLeft: {fileID: 6434959315673732034}
   numberTextBottomRight: {fileID: 1471271139474779}
   cardBackImage: {fileID: 791006390044821945}
+  _card:
+    number: 0
+    correspondingDeck: 0
+  canHover: 0
+  isSelectable: 0
+  isFirstRound: 1
 --- !u!114 &5661086826800237834
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -185,6 +192,18 @@ MonoBehaviour:
   m_EffectColor: {r: 0.084208794, g: 0.5849056, b: 0.025382632, a: 0.5}
   m_EffectDistance: {x: 7.5, y: 7.5}
   m_UseGraphicAlpha: 1
+--- !u!225 &2819174865013705925
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2304334080418389782}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &3525401837699903302
 GameObject:
   m_ObjectHideFlags: 0
