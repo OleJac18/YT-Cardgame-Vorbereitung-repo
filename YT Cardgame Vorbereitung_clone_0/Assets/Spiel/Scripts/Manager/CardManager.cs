@@ -622,6 +622,7 @@ public class CardManager : MonoBehaviour
             // Gezogene Karte intern löschen und den Zug beenden
             _drawnCard = null;
             ResetPlayerClickedCards();
+            ResetEnemyClickedCards();
             LeanTween.delayedCall(0.6f, () =>
             {
                 EndTurnEvent?.Invoke();
@@ -779,7 +780,7 @@ public class CardManager : MonoBehaviour
 
             controller.SetOutlineForAllPlayers(false);
 
-            StartCoroutine(DoPeakAndSpyMoving(card));
+            StartCoroutine(DoPeakAndSpyMoving(card, false));
         }
     }
 
@@ -808,7 +809,7 @@ public class CardManager : MonoBehaviour
 
             ResetEnemyClickedCards();
 
-            StartCoroutine(DoPeakAndSpyMoving(card));
+            StartCoroutine(DoPeakAndSpyMoving(card, true));
         }
     }
 
@@ -893,7 +894,7 @@ public class CardManager : MonoBehaviour
 
     // Bewegung, um die angeklickte Karte umzudrehen, wieder zurück zu drehen
     // und anschließend die gezogene Karte abzulegen
-    IEnumerator DoPeakAndSpyMoving(GameObject card)
+    IEnumerator DoPeakAndSpyMoving(GameObject card, bool isSpyAction)
     {
         CardController controller = card.GetComponent<CardController>();
 
@@ -914,7 +915,10 @@ public class CardManager : MonoBehaviour
         MovePlayerDrawnCardToGraveyardPos();
         DiscardCardEvent?.Invoke();
 
-        controller.CardNumber = 99;
+        if (isSpyAction)
+        {
+            controller.CardNumber = 99;
+        }
     }
 
 
