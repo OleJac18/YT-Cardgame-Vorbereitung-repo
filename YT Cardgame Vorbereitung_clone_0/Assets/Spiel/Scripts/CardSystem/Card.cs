@@ -5,20 +5,20 @@ using UnityEngine;
 [System.Serializable]
 public class Card
 {
-    public enum Stack
+    public enum DeckType
     {
         NONE, PLAYERCARD, ENEMYCARD, CARDDECK, GRAVEYARD, DRAWNCARD
     }
 
     public int number;
-    public Stack correspondingDeck;
+    public DeckType correspondingDeck;
 
     public Card()
     {
 
     }
 
-    public Card(int number, Stack correspondingDeck)
+    public Card(int number, DeckType correspondingDeck)
     {
         this.number = number;
         this.correspondingDeck = correspondingDeck;

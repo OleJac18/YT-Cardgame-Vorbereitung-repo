@@ -12,7 +12,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [SerializeField] private GameObject cardBackImage;
     [SerializeField] private Card _card;
 
-    public static event Action<Vector3, int> OnCardHoveredEvent;
+    public static event Action<Vector3, int, Card.DeckType> OnPlayerOrEnemyCardHoveredEvent;
+    public static event Action<Vector3> OnGraveyardHoveredEvent;
     public static event Action<bool, int> OnPlayerCardClickedEvent;
     public static event Action<bool, int> OnEnemyCardClickedEvent;
     public static event Action OnGraveyardCardClickedEvent;
@@ -28,6 +29,9 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private Vector3 _originalScale;
     private Vector3 _hoverScale;
 
+    private const int MAXFLIPPEDCARDS = 2;
+
+
     private bool _isFlipped;
     [SerializeField]
 
@@ -36,28 +40,32 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         _outline = this.GetComponent<Outline>();
         _originalScale = Vector3.one;
         _hoverScale = new Vector3(1.1f, 1.1f, 1f);
-        _card = new Card(13, Card.Stack.NONE);
+        _card = new Card(13, Card.DeckType.NONE);
         _isFlipped = false;
     }
 
     private void Start()
     {
-        GameManager.Instance.currentPlayerId.OnValueChanged += SetInteractableState;
-        CardManager.DeactivateInteractableStateEvent += DeactivateInteractableState;
+        GameManager.Instance.currentPlayerId.OnValueChanged += OnCurrentPlayerChanged;
+        //CardManager.DeactivateInteractableStateEvent += DeactivateInteractableState;
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
-        CardManager.SetEnemyCardInteractableStateEvent += SetEnemyCardInteractableState;
-        ButtonController.DiscardButtonClickedEvent += SetEnemyCardInteractableState;
+        CardManager.ResetCardsStateEvent += ResetCardState;
+        //CardManager.SetEnemyCardInteractableStateEvent += SetEnemyCardInteractableState;
+        //ButtonController.DiscardButtonClickedEvent += SetEnemyCardInteractableState;
+        //ButtonController.DiscardButtonClickedEvent += ResetCardState;
     }
 
     private void OnDestroy()
     {
-        GameManager.Instance.currentPlayerId.OnValueChanged -= SetInteractableState;
-        CardManager.DeactivateInteractableStateEvent -= DeactivateInteractableState;
+        GameManager.Instance.currentPlayerId.OnValueChanged -= OnCurrentPlayerChanged;
+        //CardManager.DeactivateInteractableStateEvent -= DeactivateInteractableState;
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
-        CardManager.SetEnemyCardInteractableStateEvent -= SetEnemyCardInteractableState;
-        ButtonController.DiscardButtonClickedEvent -= SetEnemyCardInteractableState;
+        CardManager.ResetCardsStateEvent -= ResetCardState;
+        //CardManager.SetEnemyCardInteractableStateEvent -= SetEnemyCardInteractableState;
+        //ButtonController.DiscardButtonClickedEvent -= SetEnemyCardInteractableState;
+        //ButtonController.DiscardButtonClickedEvent -= ResetCardState;
     }
 
     public int CardNumber
@@ -80,12 +88,12 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         numberTextBottomRight.text = cardNumber;
     }
 
-    public void SetCorrespondingDeck(Card.Stack decktype)
+    public void SetCorrespondingDeck(Card.DeckType decktype)
     {
         _card.correspondingDeck = decktype;
     }
 
-    public Card.Stack GetCorrespondingDeck()
+    public Card.DeckType GetCorrespondingDeck()
     {
         return _card.correspondingDeck;
     }
@@ -119,24 +127,34 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void SetHoverState(Vector3 scale)
     {
         this.transform.localScale = scale;
-
-        if (_card.correspondingDeck != Card.Stack.PLAYERCARD) return;
-
         int index = this.transform.GetSiblingIndex();
-        OnCardHoveredEvent?.Invoke(scale, index);
+
+        if (_card.correspondingDeck == Card.DeckType.GRAVEYARD)
+        {
+            OnGraveyardHoveredEvent?.Invoke(scale);
+        }
+        else if (_card.correspondingDeck == Card.DeckType.PLAYERCARD)
+        {
+            OnPlayerOrEnemyCardHoveredEvent?.Invoke(scale, index, Card.DeckType.ENEMYCARD);
+        }
+        else if (_card.correspondingDeck == Card.DeckType.ENEMYCARD)
+        {
+            OnPlayerOrEnemyCardHoveredEvent?.Invoke(scale, index, Card.DeckType.PLAYERCARD);
+        }
+
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         if (!isSelectable) return;
 
-        if (_card.correspondingDeck == Card.Stack.GRAVEYARD)
+        if (_card.correspondingDeck == Card.DeckType.GRAVEYARD)
         {
             OnGraveyardCardClickedEvent?.Invoke();
         }
         else
         {
-            if (CardManager.flippedCardCount < 2 && !_isFlipped && _card.correspondingDeck == Card.Stack.PLAYERCARD)
+            if (CardManager.flippedCardCount < MAXFLIPPEDCARDS && !_isFlipped && _card.correspondingDeck == Card.DeckType.PLAYERCARD)
             {
                 FlipCardAnimation(_isFlipped);
                 CardManager.flippedCardCount++;
@@ -148,7 +166,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
                 int index = this.transform.GetSiblingIndex();
                 OnCardFlippedEvent?.Invoke(true, index);
             }
-            else if (_isFlipped && _card.correspondingDeck == Card.Stack.PLAYERCARD)
+            else if (_isFlipped && _card.correspondingDeck == Card.DeckType.PLAYERCARD)
             {
                 FlipCardAnimation(_isFlipped);
                 _isFlipped = false;
@@ -166,12 +184,31 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
     }
 
+    /// <summary>
+    /// Reseted die Outline, den HoverState und den InteractableState 
+    /// Outline = false; HoverState = _originalState; InteractableState = false
+    /// </summary>
+    private void ResetCardState()
+    {
+        // Setzt die Outline zurück
+        SetOutlineForLocalPlayer(false);
+
+        // Setzt den Scale zurück
+        SetHoverState(_originalScale);
+
+        // Setzt die Interactability zurück
+        SetInteractableState(false);
+    }
+
     private void SetAllCardsAreFlippedBack()
     {
-        // Setzt den Selectable State der Karte, je nachdem ob der Spieler am Zug ist
-        // oder nicht
+        // Setzt den Selectable State der Karte, je nachdem ob der
+        // Spieler am Zug ist oder nicht
         ulong currentPlayerId = GameManager.Instance.currentPlayerId.Value;
-        SetInteractableState(currentPlayerId, currentPlayerId);
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+        bool interactable = currentPlayerId == localClientId;
+
+        SetInteractableState(interactable);
 
         SetHoverState(_originalScale);
     }
@@ -186,16 +223,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         _outline.enabled = !_outline.enabled;
 
-        int index = this.transform.GetSiblingIndex();
-
-        if (_card.correspondingDeck == Card.Stack.PLAYERCARD)
-        {
-            OnPlayerCardClickedEvent?.Invoke(_outline.enabled, index);
-        }
-        else if (_card.correspondingDeck == Card.Stack.ENEMYCARD)
-        {
-            OnEnemyCardClickedEvent?.Invoke(_outline.enabled, index);
-        }
+        InvokeCardClickedEvent(_outline.enabled);
     }
 
     public void FlipCardAnimation(bool showCardBack)
@@ -220,49 +248,44 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     {
         _outline.enabled = visible;
 
+        InvokeCardClickedEvent(_outline.enabled);
+    }
+
+    private void InvokeCardClickedEvent(bool isEnabled)
+    {
         int index = this.transform.GetSiblingIndex();
-        //OnPlayerCardClickedEvent?.Invoke(visible, index);
 
-        if (_card.correspondingDeck == Card.Stack.PLAYERCARD)
+        switch (_card.correspondingDeck)
         {
-            OnPlayerCardClickedEvent?.Invoke(_outline.enabled, index);
-        }
-        else if (_card.correspondingDeck == Card.Stack.ENEMYCARD)
-        {
-            OnEnemyCardClickedEvent?.Invoke(_outline.enabled, index);
+            case Card.DeckType.PLAYERCARD:
+                OnPlayerCardClickedEvent?.Invoke(isEnabled, index);
+                break;
+
+            case Card.DeckType.ENEMYCARD:
+                OnEnemyCardClickedEvent?.Invoke(isEnabled, index);
+                break;
         }
     }
 
-    private void SetInteractableState(ulong previousPlayerId, ulong currentPlayerId)
+    private void OnCurrentPlayerChanged(ulong previousPlayerId, ulong currentPlayerId)
     {
-        if (_card.correspondingDeck == Card.Stack.ENEMYCARD) return;
-
         ulong localClientId = NetworkManager.Singleton.LocalClientId;
+        bool interactable = currentPlayerId == localClientId;
 
-        isSelectable = currentPlayerId == localClientId;
-        canHover = currentPlayerId == localClientId;
-
-        SetHoverState(_originalScale);
+        SetInteractableStateForSpecificDeckType(Card.DeckType.PLAYERCARD ,interactable);
     }
 
-    private void SetEnemyCardInteractableState(bool interactable)
+    public void SetInteractableStateForSpecificDeckType(Card.DeckType cardDeckType, bool interactable)
     {
-        if (_card.correspondingDeck != Card.Stack.ENEMYCARD) return;
-        Debug.Log("Bin in der SetEnemyCardInteractableState Methode");
-        Debug.Log("Interactable: " + interactable);
+        if (_card.correspondingDeck != cardDeckType) return;
+        Debug.Log("Setze den InteractableState einer " + cardDeckType + " und is interactable: " + interactable);
+        SetInteractableState(interactable);
+    }
 
+    public void SetInteractableState(bool interactable)
+    {
         isSelectable = interactable;
         canHover = interactable;
-
-        SetHoverState(_originalScale);
-    }
-
-    private void DeactivateInteractableState()
-    {
-        isSelectable = false;
-        canHover = false;
-
-        SetHoverState(_originalScale);
     }
 
     private void FlipCardIfNotFlippedAtGameEnd()

@@ -31,15 +31,15 @@ public class CardManager : MonoBehaviour
 
     public static event Action ShowDiscardAndExchangeButtonEvent;
     public static event Action HidePlayerButtonEvent;
-    public static event Action DeactivateInteractableStateEvent;
+    //public static event Action DeactivateInteractableStateEvent;
     public static event Action EndTurnEvent;
     public static event Action AllCardsAreFlippedBackEvent;
-    public static event Action DiscardCardEvent;
+    public static event Action MoveEnemyDrawnCardToGraveyardEvent;
     public static event Action<string> ShowActionsButtonEvent;
-    public static event Action<bool> SetEnemyCardInteractableStateEvent;
+    public static event Action<Card.DeckType, bool> SetEnemyCardInteractableStateEvent; 
+    public static event Action ResetCardsStateEvent;
 
     public static int flippedCardCount;
-    public int FlippedCardCount;
     public static bool allCardsAreFlippedBack;
 
 
@@ -79,17 +79,20 @@ public class CardManager : MonoBehaviour
             _cardStack.ShuffleCards();
         }
 
+        ButtonController.DiscardButtonClickedEvent += MovePlayerDrawnCardToGraveyardPos;
+
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
         CardController.OnPlayerCardClickedEvent += SetPlayerClickedCardIndexAndOutline;
         CardController.OnEnemyCardClickedEvent += SetEnemyClickedCardIndexAndOutline;
         CardController.OnCardFlippedEvent += SetFlippedCard;
         CardController.OnCardFlippedBackEvent += CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent += UpdateEnemyCardNumbers;
-
     }
 
     private void OnDestroy()
     {
+        ButtonController.DiscardButtonClickedEvent -= MovePlayerDrawnCardToGraveyardPos;
+
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
         CardController.OnPlayerCardClickedEvent -= SetPlayerClickedCardIndexAndOutline;
         CardController.OnEnemyCardClickedEvent -= SetEnemyClickedCardIndexAndOutline;
@@ -98,16 +101,17 @@ public class CardManager : MonoBehaviour
         GameManager.UpdateEnemyCardsEvent -= UpdateEnemyCardNumbers;
     }
 
-    private void Update()
-    {
-        FlippedCardCount = CardManager.flippedCardCount;
-    }
-
     public int DrawTopCard()
     {
         return _cardStack.DrawTopCard();
     }
 
+    /// <summary>
+    /// Setzt das Array _playerClickedCards und die Outline der Karte 
+    /// am gleichen Index
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
     public void SetPlayerClickedCardIndexAndOutline(bool isSelected, int index)
     {
         _playerClickedCards[index] = isSelected;
@@ -115,6 +119,13 @@ public class CardManager : MonoBehaviour
         SetPlayerCardOutline(isSelected, index);
     }
 
+
+    /// <summary>
+    /// Setzt das Array _enemyClickedCards und die Outline der Karte 
+    /// am gleichen Index
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
     public void SetEnemyClickedCardIndexAndOutline(bool isSelected, int index)
     {
         _enemyClickedCards[index] = isSelected;
@@ -122,7 +133,31 @@ public class CardManager : MonoBehaviour
         SetEnemyCardOutline(isSelected, index);
     }
 
-    public bool[] GetClickedCards()
+    /// <summary>
+    /// Updated den Selektierzustand von einer Player Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
+    public void SetPlayerCardOutline(bool isSelected, int index)
+    {
+        GameObject card = _spawnCardPlayerPos.transform.GetChild(index).gameObject;
+        CardController controller = card.GetComponent<CardController>();
+        controller.SetOutlineForLocalPlayer(isSelected);
+    }
+
+    /// <summary>
+    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
+    /// </summary>
+    /// <param name="isSelected"></param>
+    /// <param name="index"></param>
+    public void SetEnemyCardOutline(bool isSelected, int index)
+    {
+        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
+        CardController controller = card.GetComponent<CardController>();
+        controller.SetOutlineForLocalPlayer(isSelected);
+    }
+
+    public bool[] GetPlayerClickedCards()
     {
         return _playerClickedCards;
     }
@@ -145,12 +180,25 @@ public class CardManager : MonoBehaviour
             yield return new WaitForSeconds(0.5f);
             // Spawned die Spielerkarten
             SpawnCard(playerCards[i], _spawnCardPlayerPos, _spawnCardPlayerPos.transform,
-                        Card.Stack.PLAYERCARD, true, true, true);
+                        Card.DeckType.PLAYERCARD, true, true, true);
 
             // Spawned die Gegnerkarten
             SpawnCard(99, _spawnCardEnemyPos, _spawnCardEnemyPos.transform,
-                        Card.Stack.ENEMYCARD, true, false, false);
+                        Card.DeckType.ENEMYCARD, true, false, false);
         }
+    }
+
+    /// <summary>
+    /// Updated den Hoverzustand von einer Enemy Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
+    /// </summary>
+    /// <param name="scaleby"></param>
+    /// <param name="index"></param>
+    public void SetPlayerCardHoverEffect(Vector3 scaleBy, int index)
+    {
+        Debug.Log("PlayerCards Child Count: " + _spawnCardPlayerPos.transform.childCount + "; Index: " + index);
+
+        GameObject card = _spawnCardPlayerPos.transform.GetChild(index).gameObject;
+        card.transform.localScale = scaleBy;
     }
 
     /// <summary>
@@ -160,32 +208,20 @@ public class CardManager : MonoBehaviour
     /// <param name="index"></param>
     public void SetEnemyCardHoverEffect(Vector3 scaleBy, int index)
     {
+        Debug.Log("EnemyCards Child Count: " + _spawnCardEnemyPos.transform.childCount + "; Index: " + index);
+
         GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
         card.transform.localScale = scaleBy;
     }
 
     /// <summary>
-    /// Updated den Selektierzustand von einer Enemy Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
+    /// Updated den Hoverzustand der Graveyard Karte. Je nachdem ob der Mauszeiger auf der Karte ist oder nicht
     /// </summary>
-    /// <param name="isSelected"></param>
-    /// <param name="index"></param>
-    public void SetEnemyCardOutline(bool isSelected, int index)
+    /// <param name="scaleby"></param>
+    public void SetGraveyardCardHoverEffect(Vector3 scaleBy)
     {
-        GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
-        CardController controller = card.GetComponent<CardController>();
-        controller.SetOutlineForLocalPlayer(isSelected);
-    }
-
-    /// <summary>
-    /// Updated den Selektierzustand von einer Player Karte. Je nachdem ob die Karte geklickt worden ist oder nicht
-    /// </summary>
-    /// <param name="isSelected"></param>
-    /// <param name="index"></param>
-    public void SetPlayerCardOutline(bool isSelected, int index)
-    {
-        GameObject card = _spawnCardPlayerPos.transform.GetChild(index).gameObject;
-        CardController controller = card.GetComponent<CardController>();
-        controller.SetOutlineForLocalPlayer(isSelected);
+        GameObject card = _graveyardPos.transform.GetChild(0).gameObject;
+        card.transform.localScale = scaleBy;
     }
 
     /// <summary>
@@ -227,7 +263,7 @@ public class CardManager : MonoBehaviour
     {
         // Spawned eine neue Karte vom Kartenstapel für das Graveyard
         _graveyardCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent,
-                                    Card.Stack.GRAVEYARD, true, false, isSelectable);
+                                    Card.DeckType.GRAVEYARD, true, true, isSelectable);
 
         // Setzt den Parent zuerst vom Table, damit die Karte über dem Kartenstapel ist
         _graveyardCard.transform.SetParent(_graveyardPos.transform.parent);
@@ -244,7 +280,7 @@ public class CardManager : MonoBehaviour
         });
     }
 
-    private GameObject SpawnCard(int cardNumber, GameObject targetPos, Transform parent, Card.Stack corresDeck, bool backCardIsVisible, bool canHover, bool isSelectable)
+    private GameObject SpawnCard(int cardNumber, GameObject targetPos, Transform parent, Card.DeckType corresDeck, bool backCardIsVisible, bool canHover, bool isSelectable)
     {
         GameObject spawnCard = Instantiate(_cardPrefab, targetPos.transform.position, targetPos.transform.rotation);
 
@@ -268,7 +304,7 @@ public class CardManager : MonoBehaviour
     public void SpawnAndMoveCardDeckCardToDrawnCardPos(int cardNumber, Transform target, bool flipAtDestination)
     {
         // Spawned die oberste Karte vom Kartenstapel
-        _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent, Card.Stack.CARDDECK, true, false, false);
+        _cardDeckCard = SpawnCard(cardNumber, _spawnCardDeckPos, _spawnCardDeckPos.transform.parent, Card.DeckType.CARDDECK, true, false, false);
 
         if (flipAtDestination)
         {
@@ -331,11 +367,11 @@ public class CardManager : MonoBehaviour
         _drawnCard = objectToMove;
 
         // Guckt welche Karte bewegt worden ist und löscht diese im Anschluss
-        CardController controllerObjToMove = objectToMove.GetComponent<CardController>();
-        Card.Stack corresDeck = controllerObjToMove.GetCorrespondingDeck();
+        CardController controllerDrawnCard = _drawnCard.GetComponent<CardController>();
+        Card.DeckType oldCorresDeck = controllerDrawnCard.GetCorrespondingDeck();
 
-
-        if (corresDeck == Card.Stack.GRAVEYARD)
+        // Löscht das GameObjekt ab, welches vorher bewegt worden ist
+        if (oldCorresDeck == Card.DeckType.GRAVEYARD)
         {
             _graveyardCard = null;
         }
@@ -345,9 +381,14 @@ public class CardManager : MonoBehaviour
         }
 
         // Ändert das correspondingDeck von der _drawnCard
-        CardController controllerDrawnCard = _drawnCard.GetComponent<CardController>();
-        controllerDrawnCard.SetCorrespondingDeck(Card.Stack.DRAWNCARD);
+        controllerDrawnCard.SetCorrespondingDeck(Card.DeckType.DRAWNCARD);
 
+        CheckForCardActionButtons(showButton, controllerDrawnCard, oldCorresDeck);
+    }
+
+
+    private void CheckForCardActionButtons(bool showButton, CardController controllerDrawnCard, Card.DeckType oldCorresDeck)
+    {
         // Guckt, ob die Buttons zum Abwerfen oder Tauschen angezeigt werden sollen
         if (showButton)
         {
@@ -355,7 +396,7 @@ public class CardManager : MonoBehaviour
 
             int cardNumber = controllerDrawnCard.CardNumber;
 
-            if (corresDeck == Card.Stack.CARDDECK)
+            if (oldCorresDeck == Card.DeckType.CARDDECK)
             {
                 // Überprüft ob die neu gespawnte Karte eine 7 oder 8 ist, weil dann eine spezielle 
                 // Aktion ausgeführt werden kann
@@ -368,13 +409,13 @@ public class CardManager : MonoBehaviour
                 {
                     currentAction = SpecialAction.Spy;
                     ShowActionsButtonEvent?.Invoke("Spy");
-                    SetEnemyCardInteractableStateEvent?.Invoke(true);
+                    SetEnemyCardInteractableStateEvent?.Invoke(Card.DeckType.ENEMYCARD, true);
                 }
                 else if (cardNumber == 11 || cardNumber == 12)
                 {
                     currentAction = SpecialAction.Swap;
                     ShowActionsButtonEvent?.Invoke("Swap");
-                    SetEnemyCardInteractableStateEvent?.Invoke(true);
+                    SetEnemyCardInteractableStateEvent?.Invoke(Card.DeckType.ENEMYCARD, true);
                 }
                 else
                 {
@@ -394,7 +435,7 @@ public class CardManager : MonoBehaviour
         MoveToDrawnPosition(_graveyardCard, target, showButton);
 
         CardController controller = _graveyardCard.GetComponent<CardController>();
-        controller.isSelectable = false;
+        controller.SetInteractableState(false);
     }
 
 
@@ -403,10 +444,7 @@ public class CardManager : MonoBehaviour
 
     public void MovePlayerDrawnCardToGraveyardPos()
     {
-        ResetOutlinePlayerCards();
-
         CardController controller = _drawnCard.GetComponent<CardController>();
-        //ResetOutlinePlayerCards();
         MoveDrawnCardToGraveyardPos(controller.CardNumber);
     }
 
@@ -418,6 +456,12 @@ public class CardManager : MonoBehaviour
 
     public void MoveDrawnCardToGraveyardPos(int cardNumber)
     {
+        ResetCardsStateEvent?.Invoke();
+
+        // Reseted die Array für die angeklickten Karten des Spielers und des Enemys
+        ResetClickedCards(_playerClickedCards);
+        ResetClickedCards(_enemyClickedCards);
+
         Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
 
         // Bewegt die Karte zum Graveyard
@@ -431,10 +475,8 @@ public class CardManager : MonoBehaviour
                 controller.FlipCardAnimation(false);
             }
 
-
             SetCardToGraveyardCard(_drawnCard);
             _drawnCard = null;
-            ResetPlayerClickedCards();
             EndTurnEvent?.Invoke();
         });
     }
@@ -450,7 +492,7 @@ public class CardManager : MonoBehaviour
         _graveyardCard = objectToMove;
 
         CardController controller = _graveyardCard.GetComponent<CardController>();
-        controller.SetCorrespondingDeck(Card.Stack.GRAVEYARD);
+        controller.SetCorrespondingDeck(Card.DeckType.GRAVEYARD);
     }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -517,7 +559,12 @@ public class CardManager : MonoBehaviour
         return -1; // Gibt -1 zurück, wenn kein true gefunden wurde
     }
 
-
+    /// <summary>
+    /// Aktualisiert die abgespeicherte Liste der Karten im GameManager wenn Karten 
+    /// ausgetauscht werden. Vor allem wichtig, wenn mehr als eine Karte getauscht wird
+    /// </summary>
+    /// <param name="cards"></param>
+    /// <returns></returns>
     public int[] UpdatePlayerCards(int[] cards)
     {
         List<int> newCardsList = new List<int>();
@@ -539,9 +586,6 @@ public class CardManager : MonoBehaviour
             }
         }
 
-        // Optional: Debugging
-        Debug.Log("Neue Kartenliste im CardManager: " + string.Join(", ", newCardsList));
-
         return newCardsList.ToArray();
     }
 
@@ -558,7 +602,7 @@ public class CardManager : MonoBehaviour
 
     public void ExchangeCards(GameObject playerPanel, bool[] clickedCards, int[] cards)
     {
-        SetEnemyCardInteractableStateEvent?.Invoke(false);
+        ResetCardsStateEvent?.Invoke();
         MovePlayerCardsToGraveyardPos(playerPanel, clickedCards, cards);
         MoveDrawnCardToTarget(playerPanel, clickedCards);
     }
@@ -567,8 +611,6 @@ public class CardManager : MonoBehaviour
     {
         // Erste Karte finden, die geklickt wurde
         int index = FindFirstTrueIndex(clickedCards);
-        Debug.Log("Index: " + index);
-        Debug.Log("Cards in PlayerCardsToGraveyardPos: " + string.Join(", ", cards));
         int cardNumber = cards[index];
 
         Vector3 targetPos = GetCenteredPosition(_graveyardPos.transform);
@@ -614,7 +656,7 @@ public class CardManager : MonoBehaviour
         LeanTween.moveSpline(_drawnCard, points, 0.5f).setOnComplete(() =>
         {
             CardController controller = _drawnCard.GetComponent<CardController>();
-            Card.Stack corresDeck = isCurrentPlayer ? Card.Stack.PLAYERCARD : Card.Stack.ENEMYCARD;
+            Card.DeckType corresDeck = isCurrentPlayer ? Card.DeckType.PLAYERCARD : Card.DeckType.ENEMYCARD;
 
             controller.SetCorrespondingDeck(corresDeck);
             controller.FlipCardAnimation(true);
@@ -625,8 +667,11 @@ public class CardManager : MonoBehaviour
 
             // Gezogene Karte intern löschen und den Zug beenden
             _drawnCard = null;
-            ResetPlayerClickedCards();
-            ResetEnemyClickedCards();
+
+            // Reseted die Array für die angeklickten Karten des Spielers und des Enemys
+            ResetClickedCards(_playerClickedCards);
+            ResetClickedCards(_enemyClickedCards);
+
             LeanTween.delayedCall(0.6f, () =>
             {
                 EndTurnEvent?.Invoke();
@@ -634,42 +679,10 @@ public class CardManager : MonoBehaviour
         });
     }
 
-
-    private void ResetPlayerClickedCards()
+    private void ResetClickedCards(bool[] clickedCards)
     {
-        Array.Fill(_playerClickedCards, false);
+        Array.Fill(clickedCards, false);
     }
-
-    private void ResetEnemyClickedCards()
-    {
-        Array.Fill(_enemyClickedCards, false);
-    }
-
-    public void ResetOutlinePlayerCards()
-    {
-        Debug.Log("Ich will die Outlines der Playerkarten zurücksetzen");
-        ResetOutlineCards(_spawnCardPlayerPos);
-    }
-
-    public void ResetOutlineEnemyCards()
-    {
-        ResetOutlineCards(_spawnCardEnemyPos);
-    }
-
-    private void ResetOutlineCards(GameObject playerPanel)
-    {
-        int cardsCount = playerPanel.transform.childCount;
-        for (int i = 0; i < cardsCount; i++)
-        {
-            //if (_playerClickedCards[i])
-            //{
-            GameObject card = playerPanel.transform.GetChild(i).gameObject;
-            CardController controller = card.GetComponent<CardController>();
-            controller.SetOutlineForLocalPlayer(false);
-            //}
-        }
-    }
-
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -773,16 +786,13 @@ public class CardManager : MonoBehaviour
         if (isSingleCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
-            DeactivateInteractableStateEvent?.Invoke();
+            ResetCardsStateEvent?.Invoke();
 
             currentAction = SpecialAction.None;
 
             // Dreht die Karte angeklickte Karte um lässt sie zwei Sekunden umgedreht und dreht sie 
             // im Anschluss wieder um und beendet den Zug
             GameObject card = _spawnCardPlayerPos.transform.GetChild(clickedCardIndex).gameObject;
-            CardController controller = card.GetComponent<CardController>();
-
-            controller.SetOutlineForAllPlayers(false);
 
             StartCoroutine(DoPeakAndSpyMoving(card, false));
         }
@@ -798,8 +808,10 @@ public class CardManager : MonoBehaviour
         if (isSingleCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
-            DeactivateInteractableStateEvent?.Invoke();
-            SetEnemyCardInteractableStateEvent?.Invoke(false);
+            //DeactivateInteractableStateEvent?.Invoke();
+            //SetEnemyCardInteractableStateEvent?.Invoke(false);
+            ResetCardsStateEvent?.Invoke();
+
 
             currentAction = SpecialAction.None;
 
@@ -808,10 +820,6 @@ public class CardManager : MonoBehaviour
             GameObject card = _spawnCardEnemyPos.transform.GetChild(clickedCardIndex).gameObject;
             CardController controller = card.GetComponent<CardController>();
             controller.CardNumber = cardNumber;
-
-            controller.SetOutlineForAllPlayers(false);
-
-            ResetEnemyClickedCards();
 
             StartCoroutine(DoPeakAndSpyMoving(card, true));
         }
@@ -828,8 +836,9 @@ public class CardManager : MonoBehaviour
         if (isSinglePlayerCardSelected && isSingleEnemyCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
-            DeactivateInteractableStateEvent?.Invoke();
-            SetEnemyCardInteractableStateEvent?.Invoke(false);
+            //DeactivateInteractableStateEvent?.Invoke();
+            //SetEnemyCardInteractableStateEvent?.Invoke(false);
+            ResetCardsStateEvent?.Invoke();
 
             currentAction = SpecialAction.None;
 
@@ -837,19 +846,13 @@ public class CardManager : MonoBehaviour
             GameObject playerCard = _spawnCardPlayerPos.transform.GetChild(playerClickedCardIndex).gameObject;
             CardController playerController = playerCard.GetComponent<CardController>();
             playerController.CardNumber = 99;
-            playerController.SetCorrespondingDeck(Card.Stack.ENEMYCARD);
-            playerController.SetOutlineForAllPlayers(false);
+            playerController.SetCorrespondingDeck(Card.DeckType.ENEMYCARD);
 
             // Reseted die Outline der angeklickten Enemykartes und updated die Kartennummer
             GameObject enemyCard = _spawnCardEnemyPos.transform.GetChild(enemyClickedCardIndex).gameObject;
             CardController enemyController = enemyCard.GetComponent<CardController>();
             enemyController.CardNumber = cardNumber;
-            enemyController.SetCorrespondingDeck(Card.Stack.PLAYERCARD);
-            enemyController.SetOutlineForAllPlayers(false);
-
-            // Reseted die Array für die angeklickten Karten des Spielers und des Enemys
-            ResetPlayerClickedCards();
-            ResetEnemyClickedCards();
+            enemyController.SetCorrespondingDeck(Card.DeckType.PLAYERCARD);
 
             StartCoroutine(DoSwapMoving(playerCard, enemyCard, enableReturnToGraveyardEvent));
         }
@@ -917,7 +920,7 @@ public class CardManager : MonoBehaviour
         yield return new WaitForSeconds(0.25f);
 
         MovePlayerDrawnCardToGraveyardPos();
-        DiscardCardEvent?.Invoke();
+        MoveEnemyDrawnCardToGraveyardEvent?.Invoke();
 
         if (isSpyAction)
         {
@@ -956,7 +959,7 @@ public class CardManager : MonoBehaviour
         if (enableReturnToGraveyardEvent)
         {
             MovePlayerDrawnCardToGraveyardPos();
-            DiscardCardEvent?.Invoke();
+            MoveEnemyDrawnCardToGraveyardEvent?.Invoke();
         }
     }
 

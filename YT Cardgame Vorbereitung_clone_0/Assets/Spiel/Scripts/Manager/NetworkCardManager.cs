@@ -19,12 +19,15 @@ public class NetworkCardManager : NetworkBehaviour
     {
         _cardManager = FindObjectOfType<CardManager>();
 
+        ButtonController.DiscardButtonClickedEvent += MoveEnemyCardToGraveyardPos;
+
         CardDeckUI.OnCardDeckClicked += HandleCardDeckClicked;
-        CardController.OnCardHoveredEvent += SetEnemyCardHoverEffectClientRpc;
+        CardController.OnPlayerOrEnemyCardHoveredEvent += SetPlayerOrEnemyCardHoverEffectClientRpc;
+        CardController.OnGraveyardHoveredEvent += SetGraveyardCardHoverEffectClientRpc;
         CardController.OnPlayerCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnEnemyCardClickedEvent += SetPlayerCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        CardManager.DiscardCardEvent += MoveEnemyCardToGraveyardPos;
+        CardManager.MoveEnemyDrawnCardToGraveyardEvent += MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent += ServFirstCards;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
         GameManager.SendSpiedCardNumberEvent += StartHandleSpyAction;
@@ -34,12 +37,16 @@ public class NetworkCardManager : NetworkBehaviour
     public override void OnDestroy()
     {
         base.OnDestroy();
+
+        ButtonController.DiscardButtonClickedEvent -= MoveEnemyCardToGraveyardPos;
+
         CardDeckUI.OnCardDeckClicked -= HandleCardDeckClicked;
-        CardController.OnCardHoveredEvent -= SetEnemyCardHoverEffectClientRpc;
+        CardController.OnPlayerOrEnemyCardHoveredEvent -= SetPlayerOrEnemyCardHoverEffectClientRpc;
+        CardController.OnGraveyardHoveredEvent -= SetGraveyardCardHoverEffectClientRpc;
         CardController.OnPlayerCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnEnemyCardClickedEvent -= SetPlayerCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        CardManager.DiscardCardEvent -= MoveEnemyCardToGraveyardPos;
+        CardManager.MoveEnemyDrawnCardToGraveyardEvent -= MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
         GameManager.SendSpiedCardNumberEvent -= StartHandleSpyAction;
@@ -123,7 +130,7 @@ public class NetworkCardManager : NetworkBehaviour
 
             // Tauscht die angeklickten Karten vom Spieler mit der gezogenen Karte
             _cardManager.ExchangePlayerCards(cards);
-            bool[] clickedCards = _cardManager.GetClickedCards();
+            bool[] clickedCards = _cardManager.GetPlayerClickedCards();
             MoveDrawnCardToEnemyClientRpc(clickedCards, cards);
         }
         else
@@ -131,7 +138,7 @@ public class NetworkCardManager : NetworkBehaviour
             int drawnCardNumber = _cardManager.GetDrawnCardNumber();
 
             // Legt die gezogene Karte auf den Ablagestapel ab
-            _cardManager.ResetOutlinePlayerCards();
+            //_cardManager.ResetOutlinePlayerCards();
             _cardManager.MovePlayerDrawnCardToGraveyardPos();
             MoveEnemyCardToGraveyardPosClientRpc(drawnCardNumber);
         }
@@ -193,15 +200,36 @@ public class NetworkCardManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Lässt bei allen Clients eine spezifische Enemycard gehovert aussehen.
+    /// Lässt bei allen Clients eine spezifische Playercard oder Enemycard gehovert aussehen.
     /// </summary>
     /// <param name="scaleby"></param>
     /// <param name="index"></param>
     [Rpc(SendTo.NotMe)]
-    private void SetEnemyCardHoverEffectClientRpc(Vector3 scaleBy, int index)
+    private void SetPlayerOrEnemyCardHoverEffectClientRpc(Vector3 scaleBy, int index, Card.DeckType cardDeckType)
     {
         if (IsServer && !IsHost) return;
-        _cardManager.SetEnemyCardHoverEffect(scaleBy, index);
+
+        if (cardDeckType == Card.DeckType.PLAYERCARD)
+        {
+            _cardManager.SetPlayerCardHoverEffect(scaleBy, index);
+        }
+        else if (cardDeckType == Card.DeckType.ENEMYCARD)
+        {
+            _cardManager.SetEnemyCardHoverEffect(scaleBy, index);
+        }
+    }
+
+    /// <summary>
+    /// Lässt bei allen Clients die GraveyardCard gehovert aussehen.
+    /// </summary>
+    /// <param name="scaleby"></param>
+    /// <param name="index"></param>
+    [Rpc(SendTo.NotMe)]
+    private void SetGraveyardCardHoverEffectClientRpc(Vector3 scaleBy)
+    {
+        if (IsServer && !IsHost) return;
+
+        _cardManager.SetGraveyardCardHoverEffect(scaleBy);
     }
 
 
@@ -227,7 +255,6 @@ public class NetworkCardManager : NetworkBehaviour
     private void SetPlayerCardClickedClientRpc(bool isSelected, int index)
     {
         if (IsServer && !IsHost) return;
-        //_cardManager.SetPlayerCardOutline(isSelected, index);
         _cardManager.SetPlayerClickedCardIndexAndOutline(isSelected, index);
     }
 
@@ -261,7 +288,6 @@ public class NetworkCardManager : NetworkBehaviour
     [Rpc(SendTo.NotMe)]
     private void MoveEnemyCardToGraveyardPosClientRpc(int cardNumber)
     {
-        _cardManager.ResetOutlineEnemyCards();
         _cardManager.MoveEnemyDrawnCardToGraveyardPos(cardNumber);
     }
 
@@ -273,13 +299,6 @@ public class NetworkCardManager : NetworkBehaviour
     {
         _cardManager.ExchangeEnemyCards(clickedCards, cards);
     }
-
-    [Rpc(SendTo.NotMe)]
-    public void ResetOutlineEnemyCardsClientRpc()
-    {
-        _cardManager.ResetOutlineEnemyCards();
-    }
-
 
     /////////////////////////////////////////////////////
     [Rpc(SendTo.Server)]
