@@ -36,7 +36,7 @@ public class CardManager : MonoBehaviour
     public static event Action AllCardsAreFlippedBackEvent;
     public static event Action MoveEnemyDrawnCardToGraveyardEvent;
     public static event Action<string> ShowActionsButtonEvent;
-    public static event Action<Card.DeckType, bool> SetEnemyCardInteractableStateEvent; 
+    public static event Action<Card.DeckType, bool> SetEnemyCardInteractableStateEvent;
     public static event Action ResetCardsStateEvent;
 
     public static int flippedCardCount;
@@ -195,8 +195,6 @@ public class CardManager : MonoBehaviour
     /// <param name="index"></param>
     public void SetPlayerCardHoverEffect(Vector3 scaleBy, int index)
     {
-        Debug.Log("PlayerCards Child Count: " + _spawnCardPlayerPos.transform.childCount + "; Index: " + index);
-
         GameObject card = _spawnCardPlayerPos.transform.GetChild(index).gameObject;
         card.transform.localScale = scaleBy;
     }
@@ -208,8 +206,6 @@ public class CardManager : MonoBehaviour
     /// <param name="index"></param>
     public void SetEnemyCardHoverEffect(Vector3 scaleBy, int index)
     {
-        Debug.Log("EnemyCards Child Count: " + _spawnCardEnemyPos.transform.childCount + "; Index: " + index);
-
         GameObject card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
         card.transform.localScale = scaleBy;
     }
@@ -395,6 +391,8 @@ public class CardManager : MonoBehaviour
             ShowDiscardAndExchangeButtonEvent?.Invoke();
 
             int cardNumber = controllerDrawnCard.CardNumber;
+
+            Debug.Log("CardNumber: " + cardNumber + " und der deckType ist: " + oldCorresDeck);
 
             if (oldCorresDeck == Card.DeckType.CARDDECK)
             {
@@ -808,10 +806,7 @@ public class CardManager : MonoBehaviour
         if (isSingleCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
-            //DeactivateInteractableStateEvent?.Invoke();
-            //SetEnemyCardInteractableStateEvent?.Invoke(false);
             ResetCardsStateEvent?.Invoke();
-
 
             currentAction = SpecialAction.None;
 

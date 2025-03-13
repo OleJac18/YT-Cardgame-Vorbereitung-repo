@@ -235,6 +235,14 @@ public class GameManager : NetworkBehaviour
         EndTurn();
     }
 
+    /// <summary>
+    /// Beendet das Spiel
+    /// Es wird ermittelt, welcher Spieler die geringsten Punkte hat und somit dann auch der Gewinner
+    /// Der Score aller Spieler wird auf der UI geupdated
+    /// Die Karten des Enemys werden mit den tatsächlichen Zahlen gefüllt
+    /// Die Karten aller Spieler werden umgedreht 
+    /// Der ScoreScreen wird eingeblendet 
+    /// </summary>
     public void EndGame()
     {
         Player[] players = _playerManager.GetAllPlayers();
@@ -244,6 +252,10 @@ public class GameManager : NetworkBehaviour
         FlipCardsAndDisplayScoreScreenClientsAndHostRpc(players, winningPlayer);
     }
 
+    /// <summary>
+    /// Der Score aller Spieler wird auf der UI geupdated
+    /// Die Karten des Enemys werden mit den tatsächlichen Zahlen gefüllt
+    /// </summary>
     private void UpdateScoreAndEnemyCardsForAllPlayer()
     {
         Dictionary<ulong, Player> _playerDataDict = _playerManager.GetPlayerDataDict();
@@ -254,6 +266,11 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Der Score aller Spieler wird auf der UI geupdated
+    /// Die Karten des Enemys werden mit den tatsächlichen Zahlen gefüllt
+    /// </summary>
+    /// <param name="player"></param>
     [Rpc(SendTo.ClientsAndHost)]
     private void UpdateScoreAndEnemyCardsClientsAndHostRpc(Player player)
     {
@@ -261,6 +278,10 @@ public class GameManager : NetworkBehaviour
         UpdateEnemyCardsEvent?.Invoke(player);
     }
 
+    /// <summary>
+    /// Das Spiel wird neugestartet
+    /// </summary>
+    /// <returns></returns>
     private IEnumerator Restart()
     {
         yield return new WaitForSeconds(2f);
@@ -269,6 +290,13 @@ public class GameManager : NetworkBehaviour
         RestartGameEvent?.Invoke();
     }
 
+
+    /// <summary>
+    /// Die Karten aller Spieler werden umgedreht 
+    /// Der ScoreScreen wird eingeblendet 
+    /// </summary>
+    /// <param name="players"></param>
+    /// <param name="winningPlayer"></param>
     [Rpc(SendTo.ClientsAndHost)]
     private void FlipCardsAndDisplayScoreScreenClientsAndHostRpc(Player[] players, Player winningPlayer)
     {
@@ -276,6 +304,9 @@ public class GameManager : NetworkBehaviour
         UpdateScoreScreenEvent?.Invoke(players, winningPlayer);
     }
 
+    /// <summary>
+    /// Startet die Transition. Heißt der Bildschirm wird dunkel s
+    /// </summary>
     [Rpc(SendTo.ClientsAndHost)]
     private void StartTransitionClientsAndHostRpc()
     {

@@ -47,25 +47,20 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     private void Start()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged += OnCurrentPlayerChanged;
-        //CardManager.DeactivateInteractableStateEvent += DeactivateInteractableState;
         GameManager.FlipAllCardsEvent += FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent += SetAllCardsAreFlippedBack;
         CardManager.ResetCardsStateEvent += ResetCardState;
-        //CardManager.SetEnemyCardInteractableStateEvent += SetEnemyCardInteractableState;
-        //ButtonController.DiscardButtonClickedEvent += SetEnemyCardInteractableState;
-        //ButtonController.DiscardButtonClickedEvent += ResetCardState;
+        CardManager.SetEnemyCardInteractableStateEvent += SetInteractableStateForSpecificDeckType;
     }
 
     private void OnDestroy()
     {
         GameManager.Instance.currentPlayerId.OnValueChanged -= OnCurrentPlayerChanged;
-        //CardManager.DeactivateInteractableStateEvent -= DeactivateInteractableState;
         GameManager.FlipAllCardsEvent -= FlipCardIfNotFlippedAtGameEnd;
         CardManager.AllCardsAreFlippedBackEvent -= SetAllCardsAreFlippedBack;
         CardManager.ResetCardsStateEvent -= ResetCardState;
-        //CardManager.SetEnemyCardInteractableStateEvent -= SetEnemyCardInteractableState;
-        //ButtonController.DiscardButtonClickedEvent -= SetEnemyCardInteractableState;
-        //ButtonController.DiscardButtonClickedEvent -= ResetCardState;
+        CardManager.SetEnemyCardInteractableStateEvent -= SetInteractableStateForSpecificDeckType;
+
     }
 
     public int CardNumber
@@ -272,13 +267,12 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         ulong localClientId = NetworkManager.Singleton.LocalClientId;
         bool interactable = currentPlayerId == localClientId;
 
-        SetInteractableStateForSpecificDeckType(Card.DeckType.PLAYERCARD ,interactable);
+        SetInteractableStateForSpecificDeckType(Card.DeckType.PLAYERCARD, interactable);
     }
 
     public void SetInteractableStateForSpecificDeckType(Card.DeckType cardDeckType, bool interactable)
     {
         if (_card.correspondingDeck != cardDeckType) return;
-        Debug.Log("Setze den InteractableState einer " + cardDeckType + " und is interactable: " + interactable);
         SetInteractableState(interactable);
     }
 
