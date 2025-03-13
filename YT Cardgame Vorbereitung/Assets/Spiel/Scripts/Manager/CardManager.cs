@@ -80,8 +80,8 @@ public class CardManager : MonoBehaviour
         }
 
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToPlayerPos;
-        CardController.OnPlayerCardClickedEvent += SetPlayerClickedCardIndex;
-        CardController.OnEnemyCardClickedEvent += SetEnemyClickedCardIndex;
+        CardController.OnPlayerCardClickedEvent += SetPlayerClickedCardIndexAndOutline;
+        CardController.OnEnemyCardClickedEvent += SetEnemyClickedCardIndexAndOutline;
         CardController.OnCardFlippedEvent += SetFlippedCard;
         CardController.OnCardFlippedBackEvent += CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent += UpdateEnemyCardNumbers;
@@ -91,8 +91,8 @@ public class CardManager : MonoBehaviour
     private void OnDestroy()
     {
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToPlayerPos;
-        CardController.OnPlayerCardClickedEvent -= SetPlayerClickedCardIndex;
-        CardController.OnEnemyCardClickedEvent -= SetEnemyClickedCardIndex;
+        CardController.OnPlayerCardClickedEvent -= SetPlayerClickedCardIndexAndOutline;
+        CardController.OnEnemyCardClickedEvent -= SetEnemyClickedCardIndexAndOutline;
         CardController.OnCardFlippedEvent -= SetFlippedCard;
         CardController.OnCardFlippedBackEvent -= CardFlippedBack;
         GameManager.UpdateEnemyCardsEvent -= UpdateEnemyCardNumbers;
@@ -108,14 +108,18 @@ public class CardManager : MonoBehaviour
         return _cardStack.DrawTopCard();
     }
 
-    public void SetPlayerClickedCardIndex(bool isSelected, int index)
+    public void SetPlayerClickedCardIndexAndOutline(bool isSelected, int index)
     {
         _playerClickedCards[index] = isSelected;
+
+        SetPlayerCardOutline(isSelected, index);
     }
 
-    public void SetEnemyClickedCardIndex(bool isSelected, int index)
+    public void SetEnemyClickedCardIndexAndOutline(bool isSelected, int index)
     {
         _enemyClickedCards[index] = isSelected;
+
+        SetEnemyCardOutline(isSelected, index);
     }
 
     public bool[] GetClickedCards()

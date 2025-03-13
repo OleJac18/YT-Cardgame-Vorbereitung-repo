@@ -214,8 +214,8 @@ public class NetworkCardManager : NetworkBehaviour
     private void SetEnemyCardClickedClientRpc(bool isSelected, int index)
     {
         if (IsServer && !IsHost) return;
-        _cardManager.SetEnemyCardOutline(isSelected, index);
-        _cardManager.SetEnemyClickedCardIndex(isSelected, index);
+        //_cardManager.SetEnemyCardOutline(isSelected, index);
+        _cardManager.SetEnemyClickedCardIndexAndOutline(isSelected, index);
     }
 
     /// <summary>
@@ -227,8 +227,8 @@ public class NetworkCardManager : NetworkBehaviour
     private void SetPlayerCardClickedClientRpc(bool isSelected, int index)
     {
         if (IsServer && !IsHost) return;
-        _cardManager.SetPlayerCardOutline(isSelected, index);
-        _cardManager.SetPlayerClickedCardIndex(isSelected, index);
+        //_cardManager.SetPlayerCardOutline(isSelected, index);
+        _cardManager.SetPlayerClickedCardIndexAndOutline(isSelected, index);
     }
 
     /// <summary>
@@ -321,8 +321,8 @@ public class NetworkCardManager : NetworkBehaviour
     [Rpc(SendTo.SpecifiedInParams)]
     private void SetPlayerAndEnemyClickedCardsArraySpecificClientRpc(int playerClickedCardIndex, int enemyClickedCardIndex, RpcParams rpcParams = default)
     {
-        _cardManager.SetPlayerClickedCardIndex(true, enemyClickedCardIndex);
-        _cardManager.SetEnemyClickedCardIndex(true, playerClickedCardIndex);
+        _cardManager.SetPlayerClickedCardIndexAndOutline(true, enemyClickedCardIndex);
+        _cardManager.SetEnemyClickedCardIndexAndOutline(true, playerClickedCardIndex);
     }
 
     [Rpc(SendTo.Server)]
