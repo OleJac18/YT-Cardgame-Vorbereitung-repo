@@ -2,11 +2,7 @@ using System;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
-using static UnityEngine.RuleTile.TilingRuleOutput;
 
 public class MainMenu : MonoBehaviour
 {
@@ -20,14 +16,16 @@ public class MainMenu : MonoBehaviour
     [SerializeField] private TMP_InputField OfflineJoinGameIPInput; // Eingabefeld für die IP Adresse zum Joinen
     [SerializeField] private TMP_InputField OfflineJoinGamePortInput; // Eingabefeld für die Port Adresse zum Joinen
 
+    [Header("Wlan Input")]
+    [SerializeField] private TMP_InputField WlanHostGameIPInput; // Eingabefeld für die IP Adresse des Host
+    [SerializeField] private TMP_InputField WlanHostGamePortInput; // Eingabefeld für die Port Adresse des Host
+
+    [SerializeField] private TMP_InputField WlanJoinGameIPInput; // Eingabefeld für die IP Adresse zum Joinen
+    [SerializeField] private TMP_InputField WlanJoinGamePortInput; // Eingabefeld für die Port Adresse zum Joinen
+
     [Header("Online Input")]
     [SerializeField] private TMP_InputField OnlineJoinCodeOutput; // Ausgabe des erstellten Joincodes
     [SerializeField] private TMP_InputField OnlineJoinCodeInput; // Eingabefeld für die Joincode zum Joinen
-
-    [Header("Wlan Input")]
-    [SerializeField] private TMP_InputField WlanIPOutput; // Ausgabe der lokalen IP Adresse des Host
-    [SerializeField] private TMP_InputField WlanIPInput; // Eingabefeld für die IP Adresse des Host
-
 
     public static event Action HostSuccessfullyStartedEvent;
 
@@ -36,13 +34,10 @@ public class MainMenu : MonoBehaviour
 
     private bool initialized;
 
-    [SerializeField] private ushort serverPort = 7777; // Der Standard-Port für den Server
-    public string ipAdress;
-
     private void Start()
     {
         initialized = false;
-        _useRelay   = false;
+        _useRelay = false;
     }
 
     public void SetUseRelay(bool toggleState)
@@ -59,27 +54,42 @@ public class MainMenu : MonoBehaviour
 
     }
 
+    /////////////////////////////////////////////////////////////
+    // Local Connection Management
+
     public void StartLocalHost()
     {
-        _relayManager.SignOut(); // Spieler abmelden
+        SetUpLocalTransport(OfflineHostGameIPInput.text, OfflineHostGamePortInput.text);
 
-
-        if (ConvertInputToInt(OfflineHostGamePortInput.text) == null) return;
-        
-        ushort port = (ushort)ConvertInputToInt(OfflineHostGamePortInput.text);
-
-        // Hol den UnityTransport und konfiguriere ihn ohne Relay
-        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        transport.SetConnectionData(OfflineHostGameIPInput.text, port);
-
-        bool success = NetworkManager.Singleton.StartHost();
-        Debug.Log("Host gestartet");
-
-        if (success)
-        {
-            HostSuccessfullyStartedEvent?.Invoke();
-        }
+        StartLocalOrWlanHost();
     }
+
+    public void StartLocalClient()
+    {
+        SetUpLocalTransport(OfflineJoinGameIPInput.text, OfflineJoinGamePortInput.text);
+
+        StartLocalOrWlanClient();
+    }
+
+    /////////////////////////////////////////////////////////////
+    // Wlan Connection Management
+
+    public void StartWlanHost()
+    {
+        SetUpLocalTransport(WlanJoinGameIPInput.text, WlanHostGamePortInput.text);
+
+        StartLocalOrWlanHost();
+    }
+
+    public void StartWlanClient()
+    {
+        SetUpLocalTransport(WlanHostGameIPInput.text, WlanJoinGamePortInput.text);
+
+        StartLocalOrWlanClient();
+    }
+
+    /////////////////////////////////////////////////////////////
+    // Connection Preperations
 
     public ushort? ConvertInputToInt(string input)
     {
@@ -103,26 +113,33 @@ public class MainMenu : MonoBehaviour
         }
     }
 
-    public void StartServer()
+    private void SetUpLocalTransport(string ipAdressString, string portString)
     {
-        bool success = NetworkManager.Singleton.StartServer();
-        Debug.Log("Server gestartet");
+        _relayManager.SignOut(); // Spieler abmelden
+
+        if (ConvertInputToInt(portString) == null) return;
+
+        ushort port = (ushort)ConvertInputToInt(portString);
+
+        // Hol den UnityTransport und konfiguriere ihn ohne Relay
+        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        //transport.SetConnectionData(OfflineHostGameIPInput.text, port);
+        transport.SetConnectionData(ipAdressString, port);
+    }
+
+    public void StartLocalOrWlanHost()
+    {
+        bool success = NetworkManager.Singleton.StartHost();
+        Debug.Log("Host gestartet");
 
         if (success)
         {
-            //HostSuccessfullyStartedEvent?.Invoke();
+            HostSuccessfullyStartedEvent?.Invoke();
         }
     }
 
-    public void StartLocalClient()
+    public void StartLocalOrWlanClient()
     {
-        if (ConvertInputToInt(OfflineJoinGamePortInput.text) == null) return;
-
-        ushort port = (ushort)ConvertInputToInt(OfflineJoinGamePortInput.text);
-
-        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        transport.SetConnectionData(OfflineJoinGameIPInput.text, port);
-
         bool success = NetworkManager.Singleton.StartClient();
         Debug.Log("Client gestartet");
 
@@ -131,6 +148,20 @@ public class MainMenu : MonoBehaviour
             HostSuccessfullyStartedEvent?.Invoke();
         }
     }
+
+    public void StartServer()
+    {
+        bool success = NetworkManager.Singleton.StartServer();
+        Debug.Log("Server gestartet");
+
+        if (success)
+        {
+            HostSuccessfullyStartedEvent?.Invoke();
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Online Connection Management
 
     public async void StartOnlineHost()
     {
@@ -143,7 +174,7 @@ public class MainMenu : MonoBehaviour
                 Debug.LogError("StartOnlineHost abgebrochen: Relay konnte nicht initialisiert werden.");
                 return;
             }
-        }        
+        }
 
         string joinCode = await _relayManager.CreateRelay();
         OnlineJoinCodeOutput.text = joinCode;
@@ -196,44 +227,6 @@ public class MainMenu : MonoBehaviour
         _relayManager.SignOut(); // Spieler abmelden
 
         Debug.Log("Netzwerk wurde beendet.");
-    }
-
-
-    public void StartWlanHost()
-    {
-        _relayManager.SignOut(); // Spieler abmelden
-
-        WlanIPOutput.text = "10.10.21.43";
-
-        // IP-Adresse des Servers konfigurieren
-        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        transport.SetConnectionData("10.10.21.43", serverPort, "0.0.0.0");
-
-        bool success = NetworkManager.Singleton.StartHost();
-        Debug.Log("Host gestartet");
-
-        if (success)
-        {
-            HostSuccessfullyStartedEvent?.Invoke();
-        }
-    }
-
-    public void StartWlanClient()
-    {
-        string serverIp = WlanIPInput.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
-        ipAdress = serverIp;
-
-        // IP-Adresse des Servers konfigurieren
-        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        transport.SetConnectionData(serverIp, serverPort, "0.0.0.0");
-
-        bool success = NetworkManager.Singleton.StartClient();
-        Debug.Log("Client gestartet");
-
-        if (success)
-        {
-            HostSuccessfullyStartedEvent?.Invoke();
-        }
     }
 
     public void QuitGame()
