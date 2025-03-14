@@ -58,6 +58,9 @@ public class CardManager : MonoBehaviour
     public SpecialAction currentAction = SpecialAction.None; // Standardmäßig keine Aktion
 
 
+    public AudioClip mismatchSound;
+    private AudioSource audioSource;
+
 
     // Start is called before the first frame update
     void Start()
@@ -71,6 +74,9 @@ public class CardManager : MonoBehaviour
         // Für den Start, wenn ein Spieler sich zwei seiner Karten angucken darf
         flippedCardCount = 0;
         allCardsAreFlippedBack = false;
+
+        audioSource = GetComponent<AudioSource>();  // Holt die AudioSource vom CardManager-Objekt
+
 
         if (NetworkManager.Singleton.IsServer)
         {
@@ -391,8 +397,6 @@ public class CardManager : MonoBehaviour
             ShowDiscardAndExchangeButtonEvent?.Invoke();
 
             int cardNumber = controllerDrawnCard.CardNumber;
-
-            Debug.Log("CardNumber: " + cardNumber + " und der deckType ist: " + oldCorresDeck);
 
             if (oldCorresDeck == Card.DeckType.CARDDECK)
             {
@@ -831,19 +835,17 @@ public class CardManager : MonoBehaviour
         if (isSinglePlayerCardSelected && isSingleEnemyCardSelected)
         {
             HidePlayerButtonEvent?.Invoke();
-            //DeactivateInteractableStateEvent?.Invoke();
-            //SetEnemyCardInteractableStateEvent?.Invoke(false);
             ResetCardsStateEvent?.Invoke();
 
             currentAction = SpecialAction.None;
 
-            // Reseted die Outline der angeklickten Spielerkartes und updated die Kartennummer
+            // Updated die Kartennummer der neuen Enemykarte
             GameObject playerCard = _spawnCardPlayerPos.transform.GetChild(playerClickedCardIndex).gameObject;
             CardController playerController = playerCard.GetComponent<CardController>();
             playerController.CardNumber = 99;
             playerController.SetCorrespondingDeck(Card.DeckType.ENEMYCARD);
 
-            // Reseted die Outline der angeklickten Enemykartes und updated die Kartennummer
+            // Updated die Kartennummer der neuen Spielerkarte
             GameObject enemyCard = _spawnCardEnemyPos.transform.GetChild(enemyClickedCardIndex).gameObject;
             CardController enemyController = enemyCard.GetComponent<CardController>();
             enemyController.CardNumber = cardNumber;
@@ -974,6 +976,44 @@ public class CardManager : MonoBehaviour
         }
 
         return placeholder; // Gibt das neue Platzhalter-Objekt zurück
+    }
+
+
+    
+    ////////////////////////////////////////////////////////////////////
+    
+    // Spielt den Sound nur einmal
+    public void PlayMismatchSound()
+    {
+        if (mismatchSound != null && !audioSource.isPlaying)
+        {
+            audioSource.PlayOneShot(mismatchSound);
+        }
+    }
+
+    public void ShakePlayerCardOnInvalidCardMatch()
+    {
+        ShakeCardOnInvalidCardMatch(_spawnCardPlayerPos, _playerClickedCards);
+    }
+
+    public void ShakeEnemyCardOnInvalidCardMatch()
+    {
+        ShakeCardOnInvalidCardMatch(_spawnCardEnemyPos, _enemyClickedCards);
+    }
+
+
+    private void ShakeCardOnInvalidCardMatch(GameObject playerPanel, bool[] clickedCards)
+    {
+        for (int i = 0; i < clickedCards.Length; i++)
+        {
+            // Wenn die Karte nicht angeklickt worden ist, gehe zum nächsten Schleifenelement
+            if (!clickedCards[i]) { continue; }
+
+            GameObject _selectedCard = playerPanel.transform.GetChild(i).gameObject;
+            CardController controller = _selectedCard.GetComponent<CardController>();
+
+            controller.ShakeOnInvalidCardMatch();
+        }
     }
 
 }

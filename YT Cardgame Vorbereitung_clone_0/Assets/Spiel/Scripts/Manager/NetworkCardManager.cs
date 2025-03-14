@@ -136,9 +136,14 @@ public class NetworkCardManager : NetworkBehaviour
         else
         {
             int drawnCardNumber = _cardManager.GetDrawnCardNumber();
+            
+            // Shaked die ungleichen Karten und spielt einen Sound ab
+            _cardManager.PlayMismatchSound();
+            _cardManager.ShakePlayerCardOnInvalidCardMatch();
+            ShakeEnemyCardOnInvalidCardMatchClientRpc();
+
 
             // Legt die gezogene Karte auf den Ablagestapel ab
-            //_cardManager.ResetOutlinePlayerCards();
             _cardManager.MovePlayerDrawnCardToGraveyardPos();
             MoveEnemyCardToGraveyardPosClientRpc(drawnCardNumber);
         }
@@ -353,5 +358,14 @@ public class NetworkCardManager : NetworkBehaviour
     private void StartHandleSwapAction(int cardNumber, bool enableReturnToGraveyardEvent)
     {
         _cardManager.HandleSwapAction(cardNumber, enableReturnToGraveyardEvent);
+    }
+
+    /// <summary>
+    /// Bewegt die Enemy Karte zum Graveyard bei allen Clients, auﬂer dem Client, der auf die Karte geklickt hat
+    /// </summary>
+    [Rpc(SendTo.NotMe)]
+    private void ShakeEnemyCardOnInvalidCardMatchClientRpc()
+    {
+        _cardManager.ShakeEnemyCardOnInvalidCardMatch();
     }
 }

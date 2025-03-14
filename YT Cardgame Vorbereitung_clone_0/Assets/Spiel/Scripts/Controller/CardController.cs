@@ -289,4 +289,9 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             FlipCardAnimation(false); // Hier den Parameter für "showCardBack" auf "false" setzen
         }
     }
+
+    public void ShakeOnInvalidCardMatch()
+    {
+        LeanTween.rotateAround(this.gameObject, Vector3.forward, 8.0f, 0.1f).setEase(LeanTweenType.easeShake).setRepeat(3);
+    }
 }

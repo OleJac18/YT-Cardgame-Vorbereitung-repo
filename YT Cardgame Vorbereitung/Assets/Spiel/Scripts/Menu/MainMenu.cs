@@ -2,7 +2,11 @@ using System;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using static UnityEngine.RuleTile.TilingRuleOutput;
 
 public class MainMenu : MonoBehaviour
 {
@@ -18,8 +22,12 @@ public class MainMenu : MonoBehaviour
 
     [Header("Online Input")]
     [SerializeField] private TMP_InputField OnlineJoinCodeOutput; // Ausgabe des erstellten Joincodes
-
     [SerializeField] private TMP_InputField OnlineJoinCodeInput; // Eingabefeld für die Joincode zum Joinen
+
+    [Header("Wlan Input")]
+    [SerializeField] private TMP_InputField WlanIPOutput; // Ausgabe der lokalen IP Adresse des Host
+    [SerializeField] private TMP_InputField WlanIPInput; // Eingabefeld für die IP Adresse des Host
+
 
     public static event Action HostSuccessfullyStartedEvent;
 
@@ -28,9 +36,8 @@ public class MainMenu : MonoBehaviour
 
     private bool initialized;
 
-
-    //[SerializeField] private ushort serverPort = 7777; // Der Standard-Port für den Server
-    //public string ipAdress;
+    [SerializeField] private ushort serverPort = 7777; // Der Standard-Port für den Server
+    public string ipAdress;
 
     private void Start()
     {
@@ -54,9 +61,6 @@ public class MainMenu : MonoBehaviour
 
     public void StartLocalHost()
     {
-        // Lokale IP-Adresse vom Host
-        //ConfigureTransport("10.10.21.43", serverPort);
-
         _relayManager.SignOut(); // Spieler abmelden
 
 
@@ -66,7 +70,6 @@ public class MainMenu : MonoBehaviour
 
         // Hol den UnityTransport und konfiguriere ihn ohne Relay
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        //transport.SetConnectionData("127.0.0.1", 7777);
         transport.SetConnectionData(OfflineHostGameIPInput.text, port);
 
         bool success = NetworkManager.Singleton.StartHost();
@@ -102,9 +105,6 @@ public class MainMenu : MonoBehaviour
 
     public void StartServer()
     {
-        // Lokale IP-Adresse vom Host
-        //ConfigureTransport("10.10.21.43", serverPort);
-
         bool success = NetworkManager.Singleton.StartServer();
         Debug.Log("Server gestartet");
 
@@ -116,12 +116,6 @@ public class MainMenu : MonoBehaviour
 
     public void StartLocalClient()
     {
-        //string serverIp = ipInputField.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
-        //ipAdress = serverIp;
-
-        // IP-Adresse des Servers konfigurieren
-        //ConfigureTransport(serverIp, serverPort);
-
         if (ConvertInputToInt(OfflineJoinGamePortInput.text) == null) return;
 
         ushort port = (ushort)ConvertInputToInt(OfflineJoinGamePortInput.text);
@@ -205,17 +199,42 @@ public class MainMenu : MonoBehaviour
     }
 
 
-
-    /*private void ConfigureTransport(string ip, ushort port)
+    public void StartWlanHost()
     {
+        _relayManager.SignOut(); // Spieler abmelden
+
+        WlanIPOutput.text = "10.10.21.43";
+
+        // IP-Adresse des Servers konfigurieren
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        if (transport != null)
+        transport.SetConnectionData("10.10.21.43", serverPort, "0.0.0.0");
+
+        bool success = NetworkManager.Singleton.StartHost();
+        Debug.Log("Host gestartet");
+
+        if (success)
         {
-            transport.ConnectionData.Address = ip;
-            transport.ConnectionData.Port = port;
-            transport.ConnectionData.ServerListenAddress = "0.0.0.0";
+            HostSuccessfullyStartedEvent?.Invoke();
         }
-    }*/
+    }
+
+    public void StartWlanClient()
+    {
+        string serverIp = WlanIPInput.text; // Die IP-Adresse des Servers aus dem Eingabefeld lesen
+        ipAdress = serverIp;
+
+        // IP-Adresse des Servers konfigurieren
+        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
+        transport.SetConnectionData(serverIp, serverPort, "0.0.0.0");
+
+        bool success = NetworkManager.Singleton.StartClient();
+        Debug.Log("Client gestartet");
+
+        if (success)
+        {
+            HostSuccessfullyStartedEvent?.Invoke();
+        }
+    }
 
     public void QuitGame()
     {
