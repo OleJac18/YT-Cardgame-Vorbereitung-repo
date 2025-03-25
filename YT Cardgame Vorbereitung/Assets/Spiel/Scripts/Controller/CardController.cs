@@ -10,6 +10,8 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     [SerializeField] private TextMeshProUGUI numberTextTopLeft;
     [SerializeField] private TextMeshProUGUI numberTextBottomRight;
     [SerializeField] private GameObject cardBackImage;
+    [SerializeField] private GameObject specialActionImage;
+    [SerializeField] private TextMeshProUGUI specialActionText;
     [SerializeField] private Card _card;
 
     public static event Action<Vector3, int, Card.DeckType> OnPlayerOrEnemyCardHoveredEvent;
@@ -103,6 +105,16 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         return cardBackImage.activeSelf;
     }
 
+    public void SetSpecialActionImageVisibility(bool visible)
+    {
+        specialActionImage.SetActive(visible);
+    }
+
+    public void SetSpecialActionText(string specialActionText)
+    {
+        this.specialActionText.text = specialActionText;
+    }
+
     public void OnPointerEnter(PointerEventData eventData)
     {
         // Wenn nicht gehovert werden darf, return
@@ -193,6 +205,9 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
         // Setzt die Interactability zurück
         SetInteractableState(false);
+
+        //Macht das specialActionImage wieder unsichtbar
+        SetSpecialActionImageVisibility(false);
     }
 
     private void SetAllCardsAreFlippedBack()
@@ -268,6 +283,7 @@ public class CardController : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         bool interactable = currentPlayerId == localClientId;
 
         SetInteractableStateForSpecificDeckType(Card.DeckType.PLAYERCARD, interactable);
+        SetInteractableStateForSpecificDeckType(Card.DeckType.GRAVEYARD, interactable);
     }
 
     public void SetInteractableStateForSpecificDeckType(Card.DeckType cardDeckType, bool interactable)

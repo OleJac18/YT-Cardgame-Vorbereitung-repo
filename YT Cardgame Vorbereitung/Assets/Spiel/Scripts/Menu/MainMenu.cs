@@ -76,14 +76,14 @@ public class MainMenu : MonoBehaviour
 
     public void StartWlanHost()
     {
-        SetUpLocalTransport(WlanJoinGameIPInput.text, WlanHostGamePortInput.text);
+        SetUpLocalTransport(WlanHostGameIPInput.text, WlanHostGamePortInput.text);
 
         StartLocalOrWlanHost();
     }
 
     public void StartWlanClient()
     {
-        SetUpLocalTransport(WlanHostGameIPInput.text, WlanJoinGamePortInput.text);
+        SetUpLocalTransport(WlanJoinGameIPInput.text, WlanJoinGamePortInput.text);
 
         StartLocalOrWlanClient();
     }

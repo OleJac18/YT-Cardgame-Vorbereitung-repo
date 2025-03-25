@@ -135,9 +135,7 @@ public class GameManager : NetworkBehaviour
         _networkPlayerUIManager.SetPlayerManager(_playerManager);
 
         _turnManager.SetStartPlayer(_playerManager);
-        Debug.Log("currentPlayerId before: " + currentPlayerId.Value);
         currentPlayerId.Value = _turnManager.GetCurrentPlayer();
-        Debug.Log("currentPlayerId after: " + currentPlayerId.Value);
 
         // Wirft ein Event, damit die ersten Karten ausgegeben werden
         //List<ulong> clientIds = _playerManager.GetConnectedClientIds();

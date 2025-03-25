@@ -13,11 +13,13 @@ public class NetworkCardManager : NetworkBehaviour
     public GameObject _enemyDrawnCardPos;
 
     private CardManager _cardManager;
+    public AudioManager _audioManager;
 
     // Start is called before the first frame update
     void Start()
     {
         _cardManager = FindObjectOfType<CardManager>();
+        _audioManager = FindObjectOfType<AudioManager>();
 
         ButtonController.DiscardButtonClickedEvent += MoveEnemyCardToGraveyardPos;
 
@@ -27,7 +29,6 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnPlayerCardClickedEvent += SetEnemyCardClickedClientRpc;
         CardController.OnEnemyCardClickedEvent += SetPlayerCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent += MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        CardManager.MoveEnemyDrawnCardToGraveyardEvent += MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent += ServFirstCards;
         GameManager.ProcessSelectedCardsEvent += ProcessSelectedCards;
         GameManager.SendSpiedCardNumberEvent += StartHandleSpyAction;
@@ -46,7 +47,7 @@ public class NetworkCardManager : NetworkBehaviour
         CardController.OnPlayerCardClickedEvent -= SetEnemyCardClickedClientRpc;
         CardController.OnEnemyCardClickedEvent -= SetPlayerCardClickedClientRpc;
         CardController.OnGraveyardCardClickedEvent -= MoveGraveyardCardToEnemyDrawnPosClientRpc;
-        CardManager.MoveEnemyDrawnCardToGraveyardEvent -= MoveEnemyCardToGraveyardPos;
+        //CardManager.MoveEnemyDrawnCardToGraveyardEvent -= MoveEnemyCardToGraveyardPos;
         GameManager.ServFirstCardEvent -= ServFirstCards;
         GameManager.ProcessSelectedCardsEvent -= ProcessSelectedCards;
         GameManager.SendSpiedCardNumberEvent -= StartHandleSpyAction;
@@ -136,11 +137,11 @@ public class NetworkCardManager : NetworkBehaviour
         else
         {
             int drawnCardNumber = _cardManager.GetDrawnCardNumber();
-            
+
             // Shaked die ungleichen Karten und spielt einen Sound ab
-            _cardManager.PlayMismatchSound();
+            _audioManager.PlayMismatchSound();
             _cardManager.ShakePlayerCardOnInvalidCardMatch();
-            ShakeEnemyCardOnInvalidCardMatchClientRpc();
+            ShakeEnemyCardAndPllayMismatchedSoundClientRpc();
 
 
             // Legt die gezogene Karte auf den Ablagestapel ab
@@ -361,11 +362,21 @@ public class NetworkCardManager : NetworkBehaviour
     }
 
     /// <summary>
-    /// Bewegt die Enemy Karte zum Graveyard bei allen Clients, auﬂer dem Client, der auf die Karte geklickt hat
+    /// Shaked die falsch angeklickten Karten beim Enemy und spielt ein mismatch sound ab
     /// </summary>
     [Rpc(SendTo.NotMe)]
-    private void ShakeEnemyCardOnInvalidCardMatchClientRpc()
+    private void ShakeEnemyCardAndPllayMismatchedSoundClientRpc()
     {
+        _audioManager.PlayMismatchSound();
         _cardManager.ShakeEnemyCardOnInvalidCardMatch();
+    }
+
+    /// <summary>
+    /// hightlighted die Karte beim Enemy, die der aktuelle Spieler gerade peaked
+    /// </summary>
+    [Rpc(SendTo.NotMe)]
+    public void HightlightPeakedCardForEnemyClientRpc(int index, string specialActionText, bool visibility, bool isSpyAction)
+    {
+        _cardManager.SetSpecialActionImageAndText(index, specialActionText, visibility, isSpyAction);
     }
 }

@@ -31,10 +31,8 @@ public class CardManager : MonoBehaviour
 
     public static event Action ShowDiscardAndExchangeButtonEvent;
     public static event Action HidePlayerButtonEvent;
-    //public static event Action DeactivateInteractableStateEvent;
     public static event Action EndTurnEvent;
     public static event Action AllCardsAreFlippedBackEvent;
-    public static event Action MoveEnemyDrawnCardToGraveyardEvent;
     public static event Action<string> ShowActionsButtonEvent;
     public static event Action<Card.DeckType, bool> SetEnemyCardInteractableStateEvent;
     public static event Action ResetCardsStateEvent;
@@ -57,9 +55,7 @@ public class CardManager : MonoBehaviour
 
     public SpecialAction currentAction = SpecialAction.None; // Standardmäßig keine Aktion
 
-
-    public AudioClip mismatchSound;
-    private AudioSource audioSource;
+    public AudioManager audioManager;
 
 
     // Start is called before the first frame update
@@ -74,9 +70,6 @@ public class CardManager : MonoBehaviour
         // Für den Start, wenn ein Spieler sich zwei seiner Karten angucken darf
         flippedCardCount = 0;
         allCardsAreFlippedBack = false;
-
-        audioSource = GetComponent<AudioSource>();  // Holt die AudioSource vom CardManager-Objekt
-
 
         if (NetworkManager.Singleton.IsServer)
         {
@@ -796,8 +789,36 @@ public class CardManager : MonoBehaviour
             // im Anschluss wieder um und beendet den Zug
             GameObject card = _spawnCardPlayerPos.transform.GetChild(clickedCardIndex).gameObject;
 
-            StartCoroutine(DoPeakAndSpyMoving(card, false));
+            audioManager.PlayPeakSound();
+
+            StartCoroutine(DoPeakAndSpyMoving(card, clickedCardIndex,"Peak", false));
         }
+    }
+
+    public void SetSpecialActionImageAndText(int index, string specialActionText, bool visibility, bool isSpyAction)
+    {
+        GameObject card;
+
+        if (isSpyAction)
+        {
+            card = _spawnCardPlayerPos.transform.GetChild(index).gameObject;
+            if (visibility)
+            {
+                audioManager.PlaySpySound();
+            } 
+        }
+        else
+        {
+            card = _spawnCardEnemyPos.transform.GetChild(index).gameObject;
+            if (visibility)
+            {
+                audioManager.PlayPeakSound();
+            }
+        }
+
+        CardController controller = card.GetComponent<CardController>();
+        controller.SetSpecialActionImageVisibility(visibility);
+        controller.SetSpecialActionText(specialActionText);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -820,7 +841,9 @@ public class CardManager : MonoBehaviour
             CardController controller = card.GetComponent<CardController>();
             controller.CardNumber = cardNumber;
 
-            StartCoroutine(DoPeakAndSpyMoving(card, true));
+            audioManager.PlaySpySound();
+
+            StartCoroutine(DoPeakAndSpyMoving(card, clickedCardIndex,"Spy", true));
         }
     }
 
@@ -850,6 +873,8 @@ public class CardManager : MonoBehaviour
             CardController enemyController = enemyCard.GetComponent<CardController>();
             enemyController.CardNumber = cardNumber;
             enemyController.SetCorrespondingDeck(Card.DeckType.PLAYERCARD);
+
+            audioManager.PlaySwapSound();
 
             StartCoroutine(DoSwapMoving(playerCard, enemyCard, enableReturnToGraveyardEvent));
         }
@@ -898,8 +923,10 @@ public class CardManager : MonoBehaviour
 
     // Bewegung, um die angeklickte Karte umzudrehen, wieder zurück zu drehen
     // und anschließend die gezogene Karte abzulegen
-    IEnumerator DoPeakAndSpyMoving(GameObject card, bool isSpyAction)
+    IEnumerator DoPeakAndSpyMoving(GameObject card, int clickedCardIndex, string specialActionText, bool isSpyAction)
     {
+        _networkCardManager.HightlightPeakedCardForEnemyClientRpc(clickedCardIndex, specialActionText, true, isSpyAction);
+
         CardController controller = card.GetComponent<CardController>();
 
         LeanTween.rotateY(card, 90.0f, 0.25f);
@@ -917,7 +944,9 @@ public class CardManager : MonoBehaviour
         yield return new WaitForSeconds(0.25f);
 
         MovePlayerDrawnCardToGraveyardPos();
-        MoveEnemyDrawnCardToGraveyardEvent?.Invoke();
+        _networkCardManager.MoveEnemyCardToGraveyardPos();
+
+        _networkCardManager.HightlightPeakedCardForEnemyClientRpc(clickedCardIndex, specialActionText, false, isSpyAction);
 
         if (isSpyAction)
         {
@@ -956,7 +985,8 @@ public class CardManager : MonoBehaviour
         if (enableReturnToGraveyardEvent)
         {
             MovePlayerDrawnCardToGraveyardPos();
-            MoveEnemyDrawnCardToGraveyardEvent?.Invoke();
+            //MoveEnemyDrawnCardToGraveyardEvent?.Invoke();
+            _networkCardManager.MoveEnemyCardToGraveyardPos();
         }
     }
 
@@ -982,15 +1012,6 @@ public class CardManager : MonoBehaviour
     
     ////////////////////////////////////////////////////////////////////
     
-    // Spielt den Sound nur einmal
-    public void PlayMismatchSound()
-    {
-        if (mismatchSound != null && !audioSource.isPlaying)
-        {
-            audioSource.PlayOneShot(mismatchSound);
-        }
-    }
-
     public void ShakePlayerCardOnInvalidCardMatch()
     {
         ShakeCardOnInvalidCardMatch(_spawnCardPlayerPos, _playerClickedCards);
