@@ -45,7 +45,7 @@ public class PlayerUIController : MonoBehaviour
         {
             _localPlayerId = player.id;
             playerNameText.text = player.name;
-            UpdateScore(player.score);
+            UpdateScore(player.totalScore);
             SetActivePlayer(isCurrentPlayer);
         }
     }

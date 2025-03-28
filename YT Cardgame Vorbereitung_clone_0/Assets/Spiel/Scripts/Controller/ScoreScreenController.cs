@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,6 +11,7 @@ public class ScoreScreenController : MonoBehaviour
     public TextMeshProUGUI winnerText;
 
     public Button restartButton;
+    public TextMeshProUGUI restartButtonText;
     public TextMeshProUGUI statusText;
 
     [Header("Player Panel")]
@@ -17,6 +19,7 @@ public class ScoreScreenController : MonoBehaviour
     public TextMeshProUGUI[] playerScore;
 
     public static event Action OnReadyButtonClickedEvent;
+    public bool isCompleteEndOfGame;
 
 
     public void Start()
@@ -29,11 +32,22 @@ public class ScoreScreenController : MonoBehaviour
         GameManager.UpdateScoreScreenEvent -= UpdateScoreScreen;
     }
 
-    private void UpdateScoreScreen(Player[] players, Player winningPlayer)
+    private void UpdateScoreScreen(Player[] players, Player winningPlayer, bool isCompleteEndOfGame)
     {
         ShowScoreScreen();
         UpdatePlayerPanels(players);
         UpdateWinnerText(winningPlayer);
+
+        this.isCompleteEndOfGame = isCompleteEndOfGame;
+
+        if (isCompleteEndOfGame)
+        {
+            UpdateButton("Restart Game"); 
+        }
+        else
+        {
+            UpdateButton("Next Round");
+        }
     }
 
 
@@ -48,9 +62,16 @@ public class ScoreScreenController : MonoBehaviour
     {
         for (int i = 0; i < players.Length; i++)
         {
-            Debug.Log("i: " + i + ", PlayerName: " + players[i].name + ", PlayerScore: " + players[i].score);
+            Debug.Log("i: " + i + ", PlayerName: " + players[i].name + ", PlayerScore: " + players[i].totalScore);
             playerName[i].text = players[i].name;
-            playerScore[i].text = players[i].score.ToString();
+            if(GameManager.Instance.roundCounter.Value == 1)
+            {
+                playerScore[i].text = players[i].totalScore.ToString();
+            }
+            else
+            {
+                playerScore[i].text = players[i].totalScore.ToString() + " (+" + players[i].roundScore.ToString() + ")";
+            }    
         }
     }
 
@@ -68,5 +89,9 @@ public class ScoreScreenController : MonoBehaviour
         OnReadyButtonClickedEvent?.Invoke();
     }
 
+    private void UpdateButton(string buttonText)
+    {
+        restartButtonText.text = buttonText;
+    }
 
 }

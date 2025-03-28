@@ -17,6 +17,7 @@ public class GameManager : NetworkBehaviour
     public static GameManager Instance { get; private set; }
 
     public NetworkVariable<ulong> currentPlayerId = new NetworkVariable<ulong>();
+    public NetworkVariable<int> roundCounter = new NetworkVariable<int>();
 
     public static event Action<PlayerManager, ulong> ServFirstCardEvent;
     public static event Action<int[]> ProcessSelectedCardsEvent;
@@ -24,7 +25,7 @@ public class GameManager : NetworkBehaviour
     public static event Action RestartGameEvent;
     public static event Action StartTransitionEvent;
     public static event Action FlipAllCardsEvent;
-    public static event Action<Player[], Player> UpdateScoreScreenEvent;
+    public static event Action<Player[], Player, bool> UpdateScoreScreenEvent;
     public static event Action<Player> UpdateEnemyCardsEvent;
     public static event Action<ulong> ShowCaboTextEvent;
     public static event Action<int> SendSpiedCardNumberEvent;
@@ -33,9 +34,11 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private PlayerManager _playerManager;
     [SerializeField] private TurnManager _turnManager;
     [SerializeField] private NetworkPlayerUIManager _networkPlayerUIManager;
+    [SerializeField] private AudioManager _audioManager;
 
     [SerializeField] private TMP_InputField _nameInputField;
     [SerializeField] private int readyPlayers;
+    [SerializeField] private bool isEndOfCompleteGame;
 
     private void Awake()
     {
@@ -64,6 +67,9 @@ public class GameManager : NetworkBehaviour
 
         base.OnNetworkSpawn();
 
+        // Grundwert für den roundCounter festlegen
+        roundCounter.Value = 1;
+
         // Muss in der OnNetworkSpawn Function sein, weil es sonst zu Problemen mit der NetworkVariablen currentPlayerId
         // in der Initialize Function kommt, da diese Variable noch nicht im Netzwerk verfügbar ist, aber schon benutzt wird
         ConnectionManager.AllClientsConnectedAndSceneLoadedEvent += InitializeGame;
@@ -86,8 +92,6 @@ public class GameManager : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
-        if (!IsServer) return;
-
         base.OnNetworkDespawn();
 
         ConnectionManager.AllClientsConnectedAndSceneLoadedEvent -= InitializeGame;
@@ -95,11 +99,12 @@ public class GameManager : NetworkBehaviour
 
     private void EndTurn()
     {
+        _audioManager.PlayNextTurnSound();
+
         if (IsServer && _turnManager != null)
         {
             _turnManager.NextTurn();
             currentPlayerId.Value = _turnManager.GetCurrentPlayer();
-            Debug.Log("currentPlayerId: " + currentPlayerId.Value);
         }
     }
 
@@ -108,7 +113,6 @@ public class GameManager : NetworkBehaviour
     {
         if (Input.GetKeyDown(KeyCode.P))
         {
-            Debug.Log("Ich will etwas ausgeben.");
             PrintPlayerDictionary();
         }
     }
@@ -128,9 +132,12 @@ public class GameManager : NetworkBehaviour
 
     private void InitializeGame()
     {
+        if (!IsServer) return;
+
         currentPlayerId.Value = 50;             // Der Variablen wird zu Beginn ein Wert zugewiesen, der nie erreicht werden kann, damit man mitbekommt,
                                                 // wenn man das erste Mal den currentPlayer aus TurnManager holt um einen Change in der Variablen mitzubekommen
 
+        GetAudioManagerClientsAndHostRpc();
         _networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
         _networkPlayerUIManager.SetPlayerManager(_playerManager);
 
@@ -138,11 +145,16 @@ public class GameManager : NetworkBehaviour
         currentPlayerId.Value = _turnManager.GetCurrentPlayer();
 
         // Wirft ein Event, damit die ersten Karten ausgegeben werden
-        //List<ulong> clientIds = _playerManager.GetConnectedClientIds();
         ServFirstCardEvent?.Invoke(_playerManager, currentPlayerId.Value);
 
         // Wirft ein Event, in dem die PlayerUI auf einen Grundzustand gesetzt wird
         _networkPlayerUIManager.HandlePlayerAction(PlayerAction.Initialize, currentPlayerId.Value);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void GetAudioManagerClientsAndHostRpc()
+    {
+        _audioManager = FindObjectOfType<AudioManager>();
     }
 
     private void PrintPlayerDictionary()
@@ -160,6 +172,7 @@ public class GameManager : NetworkBehaviour
         if (readyPlayers >= totalPlayers)
         {
             readyPlayers = 0;
+            roundCounter.Value++;
             StartTransitionClientsAndHostRpc();
             StartCoroutine(Restart());
         }
@@ -167,7 +180,7 @@ public class GameManager : NetworkBehaviour
 
     private void OnGameEndButtonPressed(ulong clientId)
     {
-        ShowCaboTextClientAndHostRpc(clientId);
+        ShowCaboTextAndPlayCaboSoundClientAndHostRpc(clientId);
         EndCurrentTurnAndSavePlayerWhoPressedServerRpc(clientId);
     }
 
@@ -221,9 +234,10 @@ public class GameManager : NetworkBehaviour
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void ShowCaboTextClientAndHostRpc(ulong clientId)
+    private void ShowCaboTextAndPlayCaboSoundClientAndHostRpc(ulong clientId)
     {
         ShowCaboTextEvent?.Invoke(clientId);
+        _audioManager.PlayCaboSound();
     }
 
     [Rpc(SendTo.Server)]
@@ -246,8 +260,11 @@ public class GameManager : NetworkBehaviour
         Player[] players = _playerManager.GetAllPlayers();
 
         Player winningPlayer = _playerManager.CalculatePlayerScores((ulong)_turnManager.gameEndingPlayerId);
+
+        isEndOfCompleteGame = _playerManager.CheckScoreOfPlayersForEndOfCompleteGame();
+
         UpdateScoreAndEnemyCardsForAllPlayer();
-        FlipCardsAndDisplayScoreScreenClientsAndHostRpc(players, winningPlayer);
+        FlipCardsAndDisplayScoreScreenClientsAndHostRpc(players, winningPlayer, isEndOfCompleteGame);
     }
 
     /// <summary>
@@ -272,7 +289,7 @@ public class GameManager : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     private void UpdateScoreAndEnemyCardsClientsAndHostRpc(Player player)
     {
-        OnUpdateScoreUIEvent?.Invoke(player.id, player.score);
+        OnUpdateScoreUIEvent?.Invoke(player.id, player.totalScore);
         UpdateEnemyCardsEvent?.Invoke(player);
     }
 
@@ -282,7 +299,15 @@ public class GameManager : NetworkBehaviour
     /// <returns></returns>
     private IEnumerator Restart()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
+
+        if (isEndOfCompleteGame)
+        {
+            roundCounter.Value = 1;
+            _playerManager.ResetPlayerTotalCount();
+        }
+
+        yield return new WaitForSeconds(1f);
 
         // Wechseln Sie die Szene auf dem Server und allen Clients
         RestartGameEvent?.Invoke();
@@ -296,10 +321,10 @@ public class GameManager : NetworkBehaviour
     /// <param name="players"></param>
     /// <param name="winningPlayer"></param>
     [Rpc(SendTo.ClientsAndHost)]
-    private void FlipCardsAndDisplayScoreScreenClientsAndHostRpc(Player[] players, Player winningPlayer)
+    private void FlipCardsAndDisplayScoreScreenClientsAndHostRpc(Player[] players, Player winningPlayer, bool isEndOfCompleteGame)
     {
         FlipAllCardsEvent?.Invoke();
-        UpdateScoreScreenEvent?.Invoke(players, winningPlayer);
+        UpdateScoreScreenEvent?.Invoke(players, winningPlayer, isEndOfCompleteGame);
     }
 
     /// <summary>

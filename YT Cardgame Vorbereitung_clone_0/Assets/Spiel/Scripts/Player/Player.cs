@@ -7,19 +7,21 @@ public class Player : INetworkSerializable
     public ulong id;
     public List<int> cards = new List<int>();
     public string name;
-    public int score;
+    public int totalScore;
+    public int roundScore;
 
     public Player()
     {
 
     }
 
-    public Player(ulong id, List<int> cards, string name, int score)
+    public Player(ulong id, List<int> cards, string name, int totalScore, int roundScore)
     {
         this.id = id;
         this.cards = cards;
         this.name = name;
-        this.score = score;
+        this.totalScore = totalScore;
+        this.roundScore = roundScore;
     }
 
 
@@ -28,7 +30,8 @@ public class Player : INetworkSerializable
     {
         serializer.SerializeValue(ref id);
         serializer.SerializeValue(ref name);
-        serializer.SerializeValue(ref score);
+        serializer.SerializeValue(ref totalScore);
+        serializer.SerializeValue(ref roundScore);
 
         // Serialisierung für List<int>
         // Für die Deserialisierung wichtig, damit die Variable count initialisiert war,

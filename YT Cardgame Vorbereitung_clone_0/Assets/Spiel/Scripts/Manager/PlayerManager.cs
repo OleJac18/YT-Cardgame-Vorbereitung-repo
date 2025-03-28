@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,7 +13,7 @@ public class PlayerManager
 
         if (!_playerDataDict.ContainsKey(clientId))
         {
-            _playerDataDict[clientId] = new Player(clientId, new List<int>(), "Player " + clientId, 0);
+            _playerDataDict[clientId] = new Player(clientId, new List<int>(), "Player " + clientId, 0, 0);
             Debug.Log("Player " + clientId + " hat sich verbunden");
         }
 
@@ -31,7 +32,7 @@ public class PlayerManager
             ulong id = playerData.Key;
             Player player = playerData.Value;
 
-            Debug.Log("ID: " + id + ", Name: " + player.name + ", Level: " + player.score);
+            Debug.Log("ID: " + id + ", Name: " + player.name + ", Level: " + player.totalScore);
             Debug.Log("Neue Kartenliste im PlayerManager: " + string.Join(", ", player.cards));
         }
     }
@@ -92,7 +93,12 @@ public class PlayerManager
             {
                 if (player != playerWhoCalledCabo)
                 {
-                    player.score += player.cards.Sum();
+                    player.totalScore += player.cards.Sum();
+                    player.roundScore = player.cards.Sum();
+                } 
+                else
+                {
+                    player.roundScore = 0;
                 }
             }
         }
@@ -104,7 +110,12 @@ public class PlayerManager
             {
                 if (!playersWithLowestScore.Contains(player))
                 {
-                    player.score += player.cards.Sum();
+                    player.totalScore += player.cards.Sum();
+                    player.roundScore = player.cards.Sum();
+                }
+                else
+                {
+                    player.roundScore = 0;
                 }
             }
         }
@@ -112,5 +123,40 @@ public class PlayerManager
         PrintPlayerDictionary();
 
         return playersWithLowestScore[0];
+    }
+
+    public bool CheckScoreOfPlayersForEndOfCompleteGame()
+    {
+        // Finden Sie den Spieler mit der höchsten Punktzahl
+        List<Player> playerList = new List<Player>(_playerDataDict.Values);
+        int highestScore = playerList.Max(player => player.totalScore);
+        Player player = playerList.Find(player => player.totalScore == highestScore);
+
+        if (highestScore == 100)
+        {
+            player.totalScore = 50;
+            return false;
+        }
+        else if (highestScore > 100)
+        {
+            return true;
+        } 
+        else
+        {
+            return false;
+        }
+    }
+
+    public void ResetPlayerTotalCount()
+    {
+        foreach (KeyValuePair<ulong, Player> playerData in _playerDataDict)
+        {
+            ulong id = playerData.Key;
+            Player player = playerData.Value;
+
+            player.totalScore = 0;
+            player.roundScore = 0;
+            Debug.Log("ID: " + id + ", Name: " + player.name + ", Level: " + player.totalScore);
+        }
     }
 }

@@ -39,25 +39,30 @@ public class AudioManager : MonoBehaviour
 
     public void PlayPeakSound()
     {
+        Debug.Log("Peak sound played");
         PlaySound(peakSound);
     }
 
     public void PlaySpySound()
     {
+        Debug.Log("Spy sound played");
         PlaySound(spySound);
     }
 
     public void PlaySwapSound()
     {
-        PlaySound(swapSound);
+        Debug.Log("Swap sound played")
+;        PlaySound(swapSound);
     }
     public void PlayCaboSound()
     {
+        Debug.Log("Cabo sound played");
         PlaySound(caboSound);
     }
 
     public void PlayNextTurnSound()
     {
+        Debug.Log("Next turn sound played");
         PlaySound(nextTurnSound);
     }
 }

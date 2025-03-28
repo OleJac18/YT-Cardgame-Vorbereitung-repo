@@ -791,7 +791,7 @@ public class CardManager : MonoBehaviour
 
             audioManager.PlayPeakSound();
 
-            StartCoroutine(DoPeakAndSpyMoving(card, clickedCardIndex,"Peak", false));
+            StartCoroutine(DoPeakOrSpyMoving(card, clickedCardIndex,"Peak", false));
         }
     }
 
@@ -843,7 +843,7 @@ public class CardManager : MonoBehaviour
 
             audioManager.PlaySpySound();
 
-            StartCoroutine(DoPeakAndSpyMoving(card, clickedCardIndex,"Spy", true));
+            StartCoroutine(DoPeakOrSpyMoving(card, clickedCardIndex,"Spy", true));
         }
     }
 
@@ -923,7 +923,7 @@ public class CardManager : MonoBehaviour
 
     // Bewegung, um die angeklickte Karte umzudrehen, wieder zurück zu drehen
     // und anschließend die gezogene Karte abzulegen
-    IEnumerator DoPeakAndSpyMoving(GameObject card, int clickedCardIndex, string specialActionText, bool isSpyAction)
+    IEnumerator DoPeakOrSpyMoving(GameObject card, int clickedCardIndex, string specialActionText, bool isSpyAction)
     {
         _networkCardManager.HightlightPeakedCardForEnemyClientRpc(clickedCardIndex, specialActionText, true, isSpyAction);
 
@@ -966,10 +966,10 @@ public class CardManager : MonoBehaviour
         playerCard.transform.SetParent(playerCard.transform.root);
         enemyCard.transform.SetParent(enemyCard.transform.root);
 
-        LeanTween.moveSpline(playerCard, playerPoints, 0.5f);
-        LeanTween.moveSpline(enemyCard, enemyPoints, 0.5f);
+        LeanTween.moveSpline(playerCard, playerPoints, 1f);
+        LeanTween.moveSpline(enemyCard, enemyPoints, 1f);
 
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(1f);
 
         playerCard.transform.SetParent(placeholderEnemyCard.transform.parent);
         playerCard.transform.SetSiblingIndex(placeholderEnemyCard.transform.GetSiblingIndex());
@@ -980,12 +980,11 @@ public class CardManager : MonoBehaviour
         Destroy(placeholderPlayerCard);
         Destroy(placeholderEnemyCard);
 
-        yield return new WaitForSeconds(0.25f);
+        yield return new WaitForSeconds(1f);
 
         if (enableReturnToGraveyardEvent)
         {
             MovePlayerDrawnCardToGraveyardPos();
-            //MoveEnemyDrawnCardToGraveyardEvent?.Invoke();
             _networkCardManager.MoveEnemyCardToGraveyardPos();
         }
     }
