@@ -10,8 +10,12 @@ public class ScoreScreenController : MonoBehaviour
     public GameObject scoreScreenUI;
     public TextMeshProUGUI winnerText;
 
+    [Header("Buttons")]
     public Button restartButton;
     public TextMeshProUGUI restartButtonText;
+
+    public Button exitButton;
+
     public TextMeshProUGUI statusText;
 
     [Header("Player Panel")]
@@ -42,11 +46,13 @@ public class ScoreScreenController : MonoBehaviour
 
         if (isCompleteEndOfGame)
         {
-            UpdateButton("Restart Game"); 
+            UpdateButton("Restart Game");
+            exitButton.gameObject.SetActive(true);
         }
         else
         {
             UpdateButton("Next Round");
+            exitButton.gameObject.SetActive(false);
         }
     }
 
@@ -83,6 +89,8 @@ public class ScoreScreenController : MonoBehaviour
     public void OnReadyButtonClicked()
     {
         restartButton.interactable = false;
+        exitButton.interactable = false;
+
         statusText.gameObject.SetActive(true);
 
         // Sende Ready-Status an den Server
