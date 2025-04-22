@@ -5,7 +5,6 @@ using UnityEngine;
 public class PlayerUIManager
 {
     public static event Action<PlayerNr, Player, bool> InitializePlayerUIEvent;
-    public static event Action<ulong> UpdatePlayerUIEvent;
 
     public void InitializePlayerUI(Player[] players, ulong currentPlayerId)
     {
@@ -35,13 +34,5 @@ public class PlayerUIManager
                 Debug.LogWarning($"Ungültiger PlayerNr-Wert: {i}");
             }
         }
-    }
-
-    public void UpdatePlayerUI(ulong currentPlayerId)
-    {
-        bool isCurrentPlayer = currentPlayerId == NetworkManager.Singleton.LocalClientId;
-
-        //Updated die PlayerUI beim Spieler
-        UpdatePlayerUIEvent?.Invoke(currentPlayerId);
     }
 }

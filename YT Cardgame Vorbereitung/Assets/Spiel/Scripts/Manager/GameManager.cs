@@ -5,12 +5,6 @@ using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 
-public enum PlayerAction
-{
-    Initialize,
-    ChangeCurrentPlayer
-}
-
 
 public class GameManager : NetworkBehaviour
 {
@@ -139,8 +133,7 @@ public class GameManager : NetworkBehaviour
 
         GetAudioManagerClientsAndHostRpc();
         _networkPlayerUIManager = FindObjectOfType<NetworkPlayerUIManager>();
-        _networkPlayerUIManager.SetPlayerManager(_playerManager);
-
+  
         _turnManager.SetStartPlayer(_playerManager);
         currentPlayerId.Value = _turnManager.GetCurrentPlayer();
 
@@ -148,7 +141,7 @@ public class GameManager : NetworkBehaviour
         ServFirstCardEvent?.Invoke(_playerManager, currentPlayerId.Value);
 
         // Wirft ein Event, in dem die PlayerUI auf einen Grundzustand gesetzt wird
-        _networkPlayerUIManager.HandlePlayerAction(PlayerAction.Initialize, currentPlayerId.Value);
+        _networkPlayerUIManager.InitializePlayerUI(currentPlayerId.Value, _playerManager);
     }
 
     [Rpc(SendTo.ClientsAndHost)]

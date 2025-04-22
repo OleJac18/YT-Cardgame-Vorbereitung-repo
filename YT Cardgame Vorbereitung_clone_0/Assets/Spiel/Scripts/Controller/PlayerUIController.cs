@@ -24,7 +24,7 @@ public class PlayerUIController : MonoBehaviour
     private void Start()
     {
         PlayerUIManager.InitializePlayerUIEvent += Initialize;
-        PlayerUIManager.UpdatePlayerUIEvent += SetActivePlayer;
+        GameManager.Instance.currentPlayerId.OnValueChanged += OnPlayerTurnChanged;
         GameManager.OnUpdateScoreUIEvent += UpdateScore;
         GameManager.ShowCaboTextEvent += ShowCaboText;
 
@@ -34,7 +34,7 @@ public class PlayerUIController : MonoBehaviour
     private void OnDestroy()
     {
         PlayerUIManager.InitializePlayerUIEvent -= Initialize;
-        PlayerUIManager.UpdatePlayerUIEvent -= SetActivePlayer;
+        GameManager.Instance.currentPlayerId.OnValueChanged += OnPlayerTurnChanged;
         GameManager.OnUpdateScoreUIEvent -= UpdateScore;
         GameManager.ShowCaboTextEvent -= ShowCaboText;
     }
@@ -62,16 +62,16 @@ public class PlayerUIController : MonoBehaviour
         playerScoreText.text = $"Score: {score}";
     }
 
-    public void SetActivePlayer(ulong currentPlayerId)
-    {
-        bool isActive = currentPlayerId == _localPlayerId;
-
-        activePlayerImage.color = isActive ? Color.green : Color.grey; // Grün für aktiven Spieler
-    }
-
     public void SetActivePlayer(bool isActive)
     {
         activePlayerImage.color = isActive ? Color.green : Color.grey; // Grün für aktiven Spieler
+    }
+
+    private void OnPlayerTurnChanged(ulong previousPlayerId, ulong currentPlayerId)
+    {
+        bool isCurrentPlayer = currentPlayerId == _localPlayerId;
+
+        SetActivePlayer(isCurrentPlayer);
     }
 
     public ulong GetLocalPlayerId()
